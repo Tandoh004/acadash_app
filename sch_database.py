@@ -26,7 +26,7 @@ import win32print
 import win32api
 import tempfile
 from tkinter import simpledialog
-import PyPDF2
+from pypdf import PdfWriter
 import pyttsx3
 from  pdf2docx import Converter
 
@@ -340,6 +340,7 @@ class School_Portal:
         tool_menu = Menu(chooser, tearoff=0)
         chooser.add_cascade(label="Tools", menu=tool_menu)
         tool_menu.add_command(label=" Convert PDF to Word", command=self.convert_pdf_docx)
+        tool_menu.add_command(label="Merge PDF Files", command=self.merge_pdfs)
         tool_menu.add_separator()
         tool_menu.add_command(label="Calculator", command=self.calculator)
        
@@ -2803,10 +2804,41 @@ class School_Portal:
             cv.convert(docx_path, start=0 , end=None)
             cv.close()
 
-            self.show_message("Success", f"Conversion complete: {docx_path}", "info")
+            self.show_message("Success", f"Conversion complete: {docx_path}", "success")
 
         except Exception as e:
             self.show_message("Error", f"PDF to Docx conversion error: {e}", "error")
+
+
+    #================================= PDF Merger ====================================
+    def merge_pdfs(self):
+        # Select multiple PDF files
+        file_paths = filedialog.askopenfilenames(
+            title="Select PDF Files to Merge",
+            filetypes=[("PDF Files", "*.pdf")]
+        )
+        if not file_paths:
+            return
+
+        # Ask where to save the merged PDF
+        output_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF Files", "*.pdf")],
+            title="Save Merged PDF As"
+        )
+        if not output_path:
+            return
+
+        try:
+            merger = PdfWriter()
+            for path in file_paths:
+                merger.append(path)
+            merger.write(output_path)
+            merger.close()
+            self.show_message("Success", "PDF files merged successfully!", "success")
+        except Exception as e:
+            self.show_message("Error", f"Failed to merge PDFs:\n{e}", "error" )
+
 
     #=================================== Read text ======================================
     def read_treeview(self):
