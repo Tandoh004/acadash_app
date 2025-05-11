@@ -67,11 +67,11 @@ class School_Portal:
         canvas.create_oval(30, 30 + y_offset, 150, 150 + y_offset, fill='#1A1A40', outline='royalblue', width=2)
         
         # Draw an inverted open book symbol ABOVE the text
-        book_y = y - 20  # Raise book above the EduDash text
+        book_y = y - 15  # Raise book above the EduDash text
 
         # Book base (spine) – inverted "V" shape
-        canvas.create_line(x - 20, book_y - 10, x, book_y, fill='white', width=6)
-        canvas.create_line(x, book_y, x + 20, book_y - 10, fill='white', width=6)
+        canvas.create_line(x - 15, book_y - 10, x, book_y, fill='white', width=4)
+        canvas.create_line(x, book_y, x + 15, book_y - 10, fill='white', width=4)
 
 
         canvas.create_text(
@@ -283,23 +283,21 @@ class School_Portal:
 
 
 
-        #======================= Counter ===========================
-        def counter():
-            counter_value = 0  # Local variable to store the counter value
-
-            def digit_counter():
-                nonlocal counter_value
-                counter_value += 1
-                self.counter_label.config(text=str(counter_value))
-                self.counter_label.after(60000, digit_counter)  # Update every 1 second
-
-            # Counter Label
-            self.counter_label = Label(font=("fira mono", 16), fg="firebrick", bg="khaki", borderwidth=5, relief=SUNKEN)
-            self.counter_label.grid(row=11, column=3, sticky=E)  # Place it to the right of the time and date
-            digit_counter()
-
-        counter()
+        #======================= Digital Counter ===========================
+        # Counter Label
+        self.counter_label = Label(font=("fira mono", 16), fg="firebrick", bg="khaki", borderwidth=5, relief=SUNKEN)
+        self.counter_label.grid(row=11, column=3, sticky=E) 
         
+        self.counter_value = 0 
+
+        self.digit_counter()
+    
+    def digit_counter(self):
+        self.counter_value += 1
+        self.counter_label.config(text=str(self.counter_value))
+        self.counter_label.after(60000, self.digit_counter)  # Update every 60 seconds
+
+
     #======================= Message Display ========================
         self.message = Label(text="", fg="orange red", bg= 'lavender', font=('inter', 10, 'bold', 'italic'))
         self.message.grid(row=3, column=1, sticky=SW)
@@ -349,8 +347,12 @@ class School_Portal:
         if self.current_user_role == "admin":
             manage_menu = Menu(chooser, tearoff=0)
             manage_menu.add_command(label="Add New User", command=self.sign_up)
-            manage_menu.add_command(label="Assign Classes and Subjects", command=self.assign_class_subject)
-            chooser.add_cascade(label="Manage", menu=manage_menu)
+            manage_menu.add_separator()
+            manage_menu.add_command(label="Assign Classes & Subjects", command=self.assign_class_subject)
+            manage_menu.add_command(label="Delete Assignment", command=self.open_delete_assignment_window)
+            manage_menu.add_separator()
+            manage_menu.add_command(label="Find Teacher Assignment", command=self.open_search_teacher_window)
+            chooser.add_cascade(label="Admin tools", menu=manage_menu) 
 
         # Common menus for all roles
         search_menu = Menu(chooser, tearoff=0)
@@ -1719,7 +1721,7 @@ class School_Portal:
 
             # Check if there are any students
             if total_students == 0:
-                self.show_message("No Data", "No data available for the selected class and / or subject.", "info")
+                self.show_message("No Data", "No data available for the selected class and subject!", "info")
                 return
 
             # Calculate failed students
@@ -3037,7 +3039,7 @@ class School_Portal:
 
 
 
-     #======================================== Admin Assignment Section =========================================
+      #======================================== Admin Assignment Section =========================================
     def assign_class_subject(self):
         """Open a window to assign classes and subjects to users (admin only)"""
         if self.current_user_role != "admin":
@@ -3046,7 +3048,7 @@ class School_Portal:
 
         assign_window = Toplevel(self.root)
         assign_window.title("Assign Classes and Subjects")
-        assign_window.geometry("450x500")
+        assign_window.geometry("450x600")
         assign_window.config(bg="#3B3B3B")
         assign_window.grab_set()
 
@@ -3066,7 +3068,7 @@ class School_Portal:
 
         # Create a frame for checkboxes with scrollbar
         checkbox_frame = Frame(assign_window, bg="#3B3B3B")
-        checkbox_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=5, sticky=NSEW)
+        checkbox_frame.grid(row=4, column=0, columnspan=3, padx=10, pady=5, sticky=NSEW)
 
         # Add canvas and scrollbar
         canvas = Canvas(checkbox_frame, bg="#3B3B3B", highlightthickness=0)
@@ -3081,9 +3083,19 @@ class School_Portal:
         canvas.create_window((0, 0), window=scrollable_frame, anchor=NW)
         canvas.configure(yscrollcommand=scrollbar.set)
 
+
+        Label(assign_window, text="First Name:", bg='#3B3B3B', fg='white', font=('inter', 12)).grid(row=1, column=0, padx=10, pady=5, sticky=W)
+        firstname_entry = Entry(assign_window, width=30)
+        firstname_entry.grid(row=1, column=1, padx=10, pady=5)
+
+        Label(assign_window, text="Last Name:", bg='#3B3B3B', fg='white', font=(' inter', 12)).grid(row=2, column=0, padx=10, pady=5, sticky=W)
+        lastname_entry = Entry(assign_window, width=30)
+        lastname_entry.grid(row=2, column=1, padx=10, pady=5)
+
+
         # Class Selection (Checkboxes)
         Label(assign_window, text="Assign Classes:", font=("inter", 12), fg="white", bg="#3B3B3B").grid(
-            row=1, column=0, padx=10, pady=10, sticky=W)
+            row=3, column=0, padx=10, pady=10, sticky=W)
 
         class_list = ['1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D', '2Arts1', '2Arts2A', '2Arts2B', '2Arts2C',
                     '2Arts2D', '3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B', '1Agric1', '1Agric2',
@@ -3117,7 +3129,7 @@ class School_Portal:
 
         # Subject Selection
         Label(assign_window, text="Assign Subject:", font=("inter", 12), fg="white", bg="#3B3B3B").grid(
-            row=3 + len(class_list) // 3, column=0, padx=10, pady=10, sticky=W)
+            row=6 + len(class_list) // 3, column=0, padx=10, pady=10, sticky=W)
         
         subject_list = ['Acounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.', 'Chemistry', 'Costing', 'Crop Husb.',
                         'CRS', 'English', 'Economics', 'Elective Maths.', 'Foods & Nut.', 'French', 'General Agric',
@@ -3126,7 +3138,7 @@ class School_Portal:
         
         subject_combobox = ttk.Combobox(assign_window, width=27, state="readonly")
         subject_combobox['values'] = subject_list
-        subject_combobox.grid(row=3 + len(class_list) // 3, column=1, padx=10, pady=10)
+        subject_combobox.grid(row=6 + len(class_list) // 3, column=1, padx=10, pady=10)
 
         # Assign Button
         Button(
@@ -3134,6 +3146,8 @@ class School_Portal:
             text="Assign",
             command=lambda: self.save_assignment(
                 user_combobox.get(),
+                firstname_entry.get(),
+                lastname_entry.get(),
                 selected_classes,
                 subject_combobox.get(),
                 assign_window
@@ -3141,41 +3155,308 @@ class School_Portal:
             bg="green",
             fg="white",
             font=("inter", 10, "bold")
-        ).grid(row=4 + len(class_list) // 3, column=1, pady=20, sticky=E)
+        ).grid(row=7 + len(class_list) // 3, column=1, pady=20, sticky=E)
 
 #======================================== Save Assignment =========================================
-    def save_assignment(self, user, selected_classes, subject, window):
-        """Save the assigned classes and subject to the database"""
+    def save_assignment(self, user, fname, lname, selected_classes, subject, window):
+        """Save the assigned classes and subject to the database with duplicate check"""
         if not user or not subject:
             self.show_message("Warning", "All fields are required.", "warning")
             return
 
-        # Extract user ID and username from the selected user
         user_parts = user.split(" - ")
         user_id = user_parts[0]
-        
-        # Get the selected classes
+
+        # Get selected classes
         assigned_classes = [class_name for class_name, var in selected_classes.items() if var.get() == 1]
         if not assigned_classes:
             self.show_message("Error", "Please select at least one class.", "error")
             return
 
         try:
-            # Insert each class assignment into the database
-            for class_name in assigned_classes:
-                query = "INSERT INTO assignments (user_id, class, subject) VALUES (?, ?, ?)"
-                self.run_query(query, (user_id, class_name, subject))
+            # Insert teacher only if not already present
+            teacher_exists = self.run_query("SELECT 1 FROM teachers WHERE user_id = ?", (user_id,)).fetchone()
+            if not teacher_exists:
+                self.run_query("INSERT INTO teachers (user_id, fname, lname) VALUES (?, ?, ?)", (user_id, fname, lname))
 
-            self.show_message("Success", "Classes and subject assigned successfully!", "success")
-            window.destroy()  # Close the assignment window
+            # Track duplicates
+            duplicates = []
+
+            for class_name in assigned_classes:
+                # Check if assignment already exists
+                existing = self.run_query(
+                    "SELECT 1 FROM assignments WHERE user_id = ? AND class = ? AND subject = ?",
+                    (user_id, class_name, subject)
+                ).fetchone()
+
+                if existing:
+                    duplicates.append(class_name)
+                    continue
+
+                # Insert assignment
+                self.run_query(
+                    "INSERT INTO assignments (user_id, class, subject) VALUES (?, ?, ?)",
+                    (user_id, class_name, subject)
+                )
+
+            if duplicates:
+                dup_text = ", ".join(duplicates)
+                self.show_message("Warning", f"Skipped existing assignments for: {dup_text}", "warning")
+
+            self.show_message("Success", "Assignments processed successfully!", "success")
+            window.destroy()
+
         except Exception as e:
             self.show_message("Error", f"An error occurred: {e}", "error")
 
+
+
     def fetch_user_assignments(self, user_id):
-        """Fetch the assigned classes and subjects for the logged-in user"""
-        query = "SELECT class, subject FROM assignments WHERE user_id = ?"
-        assignments = self.run_query(query, (user_id,)).fetchall()
-        return assignments
+        """
+        Fetch assigned classes, subjects, and teacher info for a specific user_id
+        """
+        query = """
+            SELECT 
+                a.class, 
+                a.subject, 
+                t.fname, 
+                t.lname
+            FROM assignments a
+            JOIN teachers t ON a.user_id = t.user_id
+            WHERE a.user_id = ?
+        """
+        result = self.run_query(query, (user_id,)).fetchall()
+        return result
+
+#============================================ Delete Assignment ===========================================
+    def open_delete_assignment_window(self):
+        """Open a window for the admin to delete an assignment record or delete the user entirely."""
+        if self.current_user_role != "admin":
+            self.show_message("Access Denied", "Only admins can delete assignments.", "warning")
+            return
+
+        window = Toplevel(self.root)
+        window.title("Delete Assignment or User")
+        window.geometry("420x330")
+        window.config(bg="#3B3B3B")
+        window.grab_set()
+        self.center_window(window)
+
+        # User Dropdown
+        Label(window, text="Select User:", bg="#3B3B3B", fg="white",font=("inter", 10)).grid(row=0, column=0, padx=10, pady=10, sticky=W)
+        user_combobox = ttk.Combobox(window, state="readonly", width=20)
+        user_combobox.grid(row=0, column=1, padx=10, pady=10)
+
+        users = self.run_query("SELECT id, username FROM users").fetchall()
+        user_combobox['values'] = [f"{u[0]} - {u[1]}" for u in users]
+
+        # Class Entry
+        Label(window, text="Class:", bg="#3B3B3B", fg="white",font=("inter", 10)).grid(row=1, column=0, padx=10, pady=10, sticky=W)
+        class_combobox = ttk.Combobox(window, state = "readonly", width=20)
+        class_combobox.grid(row=1, column=1, padx=10, pady=10)
+
+        classes = self.run_query("SELECT DISTINCT class FROM assignments").fetchall()
+        class_combobox['values'] = [c[0] for c in classes]
+
+
+
+        # Subject Entry
+        Label(window, text="Subject:", bg="#3B3B3B", fg="white", font=("inter", 10)).grid(row=2, column=0, padx=10, pady=10, sticky=W)
+        subject_combobox = ttk.Combobox(window, state="readonly", width=20)
+        subject_combobox.grid(row=2, column=1, padx=10, pady=10)
+
+        subjects = self.run_query("SELECT DISTINCT subject FROM assignments").fetchall()
+        subject_combobox['values'] = [s[0] for s in subjects]
+
+
+        # Delete Assignment Button
+        Button(
+            window, text="Delete Assignment",
+            bg="crimson", fg="white", font=("inter", 10, "bold"),
+            command=lambda: self.delete_assignment(
+                user_combobox.get(), class_combobox.get(), subject_combobox.get(), window
+            )
+        ).grid(row=3, column=1, padx=10, pady=10, sticky=E)
+
+        # Divider
+        Label(window, text="— OR —", bg="#3B3B3B", fg="gray").grid(row=4, column=1, pady=5)
+
+        # Delete User Button
+        Button(
+            window, text="Delete Entire User & Assignments",
+            bg="darkred", fg="white", font=("inter", 10, "bold"),
+            command=lambda: self.delete_user_and_assignments(user_combobox.get(), window)
+        ).grid(row=5, column=1, padx=10, pady=10, sticky=E)
+
+    
+    def delete_assignment(self, user_combo, class_combo, subject_combo, window):
+        if not user_combo or not class_combo or not subject_combo:
+            self.show_message("Missing Info", "Please fill all fields.", "warning")
+            return
+
+        user_id = user_combo.split(" - ")[0].strip()
+        class_name = class_combo.split(" - ")[-1].strip()
+        subject = subject_combo.split(" - ")[-1].strip()
+
+
+        confirm = messagebox.askyesno(
+            "Confirm Deletion",
+            f"Delete assignment: {class_name} - {subject} for this user?"
+          )
+        if not confirm:
+            return
+
+        try:
+            query = "DELETE FROM assignments WHERE user_id = ? AND class = ? AND subject = ?"
+            self.run_query(query, (user_id, class_name, subject))
+            self.show_message("Success", "Assignment deleted successfully!", "success")
+            window.destroy()
+        except Exception as e:
+            self.show_message("Error", f"An error occurred: {e}", "error")
+
+
+
+    def delete_user_and_assignments(self, user_combo, window):
+        """Delete a user and all related assignments and teacher record."""
+        if not user_combo:
+            self.show_message("Missing Info", "Please select a user.", "warning")
+            return
+
+        user_id = user_combo.split(" - ")[0]
+
+        confirm = messagebox.askyesno(
+            "Confirm Deletion",
+            "This will delete the user and all their assignments. Continue?"
+        )
+        if not confirm:
+            return
+
+        try:
+            # Delete from assignments
+            self.run_query("DELETE FROM assignments WHERE user_id = ?", (user_id,))
+            # Delete from teachers
+            self.run_query("DELETE FROM teachers WHERE user_id = ?", (user_id,))
+            # Delete from users
+            self.run_query("DELETE FROM users WHERE id = ?", (user_id,))
+            
+            self.show_message("Success", "User and all assignments deleted.", "success")
+            window.destroy()
+        except Exception as e:
+            self.show_message("Error", f"Could not delete user: {e}", "error")
+
+
+#==================================== Search teacher subject and classess =========================================
+    def open_search_teacher_window(self):
+        """Open a window to search and display teacher assignment info."""
+        window = Toplevel(self.root)
+        window.title("Search Teacher Info")
+        window.geometry("700x500")
+        window.config(bg="#3B3B3B")
+        self.center_window(window)
+        window.grab_set()
+
+        # Title
+        Label(
+            window,
+            text="Search Teacher Assignments",
+            bg="#3B3B3B",
+            fg="white",
+            font=("inter", 14, "bold")
+        ).pack(pady=10)
+
+        # Search Entry Frame
+        search_frame = Frame(window, bg="#3B3B3B")
+        search_frame.pack(pady=10)
+
+        Label(
+            search_frame,
+            text="Enter First or Last Name:",
+            bg="#3B3B3B",
+            fg="white",
+            font=("inter", 10)
+        ).pack(side=LEFT, padx=5)
+
+        search_entry = Entry(search_frame, width=30)
+        search_entry.pack(side=LEFT, padx=5)
+
+        # Results Treeview
+        columns = ("User ID", "First Name", "Last Name", "Subject", "Class")
+        results_tree = ttk.Treeview(window, columns=columns, show="headings")
+
+        for col in columns:
+            results_tree.heading(col, text=col)
+            results_tree.column(col, width=130, anchor="center")
+
+        results_tree.pack(pady=20, fill=BOTH, expand=True)
+
+        # Search Button
+        Button(
+            search_frame,
+            text="Search",
+            command=lambda: self.perform_teacher_search(search_entry.get(), results_tree),
+            bg="navy",
+            fg="white",
+            font=("inter", 10)
+        ).pack(side=LEFT, padx=5)
+
+        # Delete Button
+        Button(
+            window,
+            text="Delete Selected",
+            bg="red",
+            fg="white",
+            font=("inter", 10, "bold"),
+            command=lambda: self.delete_selected_assignment(results_tree)
+        ).pack(pady=10)
+
+
+    def perform_teacher_search(self, search_term, treeview):
+        """Perform search based on teacher's first or last name and update treeview."""
+        treeview.delete(*treeview.get_children())  # Clear existing rows
+
+        query = """
+            SELECT t.user_id, t.fname, t.lname, a.subject, a.class
+            FROM teachers t
+            JOIN assignments a ON a.user_id = t.user_id
+            WHERE t.fname LIKE ? OR t.lname LIKE ?
+        """
+        search_term = search_term.strip()
+        params = (f"%{search_term}%", f"%{search_term}%")
+        results = self.run_query(query, params).fetchall()
+
+        if results:
+            for row in results:
+                treeview.insert("", "end", values=row)
+        else:
+            self.show_message("No Results", "No matching teacher found.", "info")
+
+
+    def delete_selected_assignment(self, tree):
+        """Delete selected assignment from Treeview and database"""
+        selected_item = tree.selection()
+        if not selected_item:
+            self.show_message("No selection", "Please select a record to delete.", "warning")
+            return
+
+        try:
+            values = tree.item(selected_item)["values"]
+            user_id, _, _, subject, class_name = values
+        except Exception:
+            self.show_message("Error", "Could not retrieve selected data.", "error")
+            return
+
+        confirm = messagebox.askyesno("Confirm Deletion", f"Delete assignment: {class_name} - {subject}?")
+        if not confirm:
+            return
+
+        try:
+            query = "DELETE FROM assignments WHERE user_id = ? AND class = ? AND subject = ?"
+            self.run_query(query, (user_id, class_name, subject))
+            tree.delete(selected_item)
+            self.show_message("Deleted", "Assignment removed successfully.", "info")
+        except Exception as e:
+            self.show_message("Error", f"Could not delete assignment: {e}", "error")
+
 
 
 #================================================== Login window ==============================================
@@ -3217,11 +3498,11 @@ class School_Portal:
 
         
         # Draw an inverted open book symbol ABOVE the text
-        book_y = y - 20  # Raise book above the EduDash text
+        book_y = y - 15  # Raise book above the EduDash text
 
         # Book base (spine) – inverted "V" shape
-        logo_canvas.create_line(x - 20, book_y - 10, x, book_y, fill='white', width=6)
-        logo_canvas.create_line(x, book_y, x + 20, book_y - 10, fill='white', width=6)
+        logo_canvas.create_line(x - 15, book_y - 10, x, book_y, fill='white', width=4)
+        logo_canvas.create_line(x, book_y, x + 15, book_y - 10, fill='white', width=4)
 
         # Keep the descriptions at the bottom
         logo_canvas.create_text(90, 170 + y_offset, text="Your smart ", fill='white', font=('Inter', 10, 'italic bold') )
