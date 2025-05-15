@@ -323,7 +323,7 @@ class School_Portal:
             file_menu.add_command(label="Edit Record", command=self.edit)
             file_menu.add_separator()
             file_menu.add_command(label="Save as PDF", command=self.show_records_window)
-            file_menu.add_command(label="Export as CSV", command=self.show_export_window)
+            file_menu.add_command(label="Export as CSV", command=self.export_csv_window)
         
             
         # Common file menu items
@@ -352,7 +352,7 @@ class School_Portal:
             manage_menu.add_command(label="Delete Assignment", command=self.open_delete_assignment_window)
             manage_menu.add_separator()
             manage_menu.add_command(label="Find Teacher Assignment", command=self.open_search_teacher_window)
-            chooser.add_cascade(label="Admin tools", menu=manage_menu) 
+            chooser.add_cascade(label="Manage User", menu=manage_menu) 
 
         # Common menus for all roles
         search_menu = Menu(chooser, tearoff=0)
@@ -501,6 +501,10 @@ class School_Portal:
             for widget in self.root.grid_slaves(column=2):  # Clear column 2 (graphs)
                 widget.destroy()
 
+            # Clear existing widgets
+            for widget in self.root.grid_slaves(row=0, column=1):
+                widget.destroy()
+          
             # Reset the message display
             self.message["text"] = ""
 
@@ -863,10 +867,6 @@ class School_Portal:
         if ed == "yes":
             self.edit_box()
     
-    
-    def help(self):
-       
-        self.show_message("Help", "For assistance, please contact support at: Email: livin.25@live.com", "info")
 
     def ex(self): 
         exi = messagebox.askquestion("Exit Application", "Do you want to Close application")
@@ -1209,8 +1209,15 @@ class School_Portal:
                 return
 
             # Base query
-            query = "SELECT * FROM students_records WHERE class_ = ?"
-            parameters = [selected_class]
+            query = """
+                   SELECT a.student_id, a.sch_code, a.student_num, a.index_num,
+                          a.year, a.period, s.fname, s.lname, s.gender, s.form, s.class_,
+                          s.subject, s.classScore, s.examScore, s.totalScore, s.grade
+                   FROM academic_records a
+                   JOIN students_records s ON s.id =  a.student_id
+                   WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
+                   """
+            parameters = [self.selected_year, self.selected_period, selected_class ]
 
             # Add subject filter if selected
             if selected_subject and selected_subject != "Choose Subject":
@@ -1228,7 +1235,9 @@ class School_Portal:
             # Write data to the CSV file
             with open(file_path, mode="w", newline="") as file:
                 writer = csv.writer(file)
-                writer.writerow(["ID", "First_Name", "Last_Name", "Gender", "Form", "Class", "Subject", "Class_Score", "Exams_Score", "Total_Score", "Grade & Remarks"])  # Header row
+                writer.writerow(["Student_id","School_code" ,"Student_num","Index_num","Year","Period",
+                                 "First_Name", "Last_Name", "Gender", "Form","Class", "Subject",
+                                 "Class_Score","Exams_Score", "Total_Score", "Grade & Remarks"])  # Header row
                 for record in records:
                     writer.writerow(record)
 
@@ -1238,7 +1247,7 @@ class School_Portal:
 
 
    #========================================= Export to Import ===========================================
-    def show_export_window(self):
+    def export_csv_window(self):
         """Open a window to retrieve student data based on Class, Subject, Year, and Period."""
         export_win = Toplevel(self.root)
         export_win.title("Export Records")
@@ -1249,17 +1258,19 @@ class School_Portal:
 
         # Class filter
         class_list = [
-            '1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D', '2Arts1', '2Arts2A', '2Arts2B', '2Arts2C', '2Arts2D',
-            '3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B', '1Agric1', '1Agric2', '2Agric1', '2Agric2',
-            '3Agric1', '3Agric2', '1Bus', '2Bus', '3Bus', '1H/E1', '1H/E2', '2H/E1', '2H/E2', '3H/E1', '3H/E2',
-            '1Sci1', '1Sci2', '2Sci1', '2Sci2', '3Sci1', '3Sci2', '1V/A', '2V/A', '3V/A'
+            '1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D', '2Arts1', '2Arts2A', '2Arts2B',
+            '2Arts2C', '2Arts2D','3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B',
+            '1Agric1', '1Agric2', '2Agric1', '2Agric2', '3Agric1', '3Agric2', '1Bus', '2Bus', '3Bus',
+            '1H/E1', '1H/E2', '2H/E1', '2H/E2', '3H/E1', '3H/E2', '1Sci1', '1Sci2', '2Sci1', '2Sci2', 
+            '3Sci1', '3Sci2', '1V/A', '2V/A', '3V/A'
         ]
         
         # Subject filter
         subj_list = [
-            'Acounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.', 'Chemistry', 'Costing', 'Crop Husb.', 'CRS', 'English',
-            'Economics', 'Elective Maths.', 'Foods & Nut.', 'French', 'General Agric', 'Geography', 'Government', 'GKA',
-            'Graphic Design', 'Integrated Sci.', 'Leather Work', 'Mathematics', 'Mgmt-in-Living', 'Physics', 'Social Studies', 'Twi'
+            'Acounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.', 'Chemistry', 'Costing', 'Crop Husb.',
+            'CRS', 'English','Economics', 'Elective Maths.', 'Foods & Nut.', 'French', 'General Agric', 
+            'Geography', 'Government', 'GKA', 'Graphic Design', 'Integrated Sci.', 'Leather Work', 
+            'Mathematics', 'Mgmt-in-Living', 'Physics', 'Social Studies', 'Twi'
         ]
 
         row_frame = Frame(export_win, bg="#2E2E2E")
@@ -1295,7 +1306,8 @@ class School_Portal:
                     return
 
                 query = """
-                    SELECT s.fname, s.lname, s.gender, s.form, s.class_, s.subject, s.classScore,s.examScore, a.year, a.period FROM students_records s
+                    SELECT s.fname, s.lname, s.gender, s.form, s.class_, s.subject, s.classScore,
+                           s.examScore, a.year, a.period FROM students_records s
                     JOIN academic_records a ON a.id = s.student_id
                     WHERE s.class_=? AND s.subject=?
                 """
@@ -1410,16 +1422,6 @@ class School_Portal:
             font=("inter", 10),
             state="readonly"
         )
-        self.class_combobox['values'] = [
-            '1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D',
-            '2Arts1', '2Arts2A', '2Arts2B', '2Arts2C', '2Arts2D',
-            '3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B',
-            '1Agric1', '1Agric2', '2Agric1', '2Agric2', '3Agric1', '3Agric2',
-            '1Bus', '2Bus', '3Bus',
-            '1H/E1', '1H/E2', '2H/E1', '2H/E2', '3H/E1', '3H/E2',
-            '1Sci1', '1Sci2', '2Sci1', '2Sci2', '3Sci1', '3Sci2',
-            '1V/A', '2V/A', '3V/A'
-        ]
         self.class_combobox.pack(side=LEFT, padx=(0,15))
         self.class_combobox.set("Choose Class")
 
@@ -1440,20 +1442,12 @@ class School_Portal:
             font=("inter", 10),
             state="readonly"
         )
-        self.subject_combobox['values'] = [
-            'Acounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.',
-            'Chemistry', 'Costing', 'Crop Husb.', 'CRS', 'English',
-            'Economics', 'Elective Maths.', 'Foods & Nut.', 'French',
-            'General Agric', 'Geography', 'Government', 'GKA',
-            'Graphic Design', 'Integrated Sci.', 'Leather Work',
-            'Mathematics', 'Mgmt-in-Living', 'Physics', 'Social Studies', 'Twi'
-        ]
         self.subject_combobox.pack(side=LEFT, padx=(0,15))
         self.subject_combobox.set("Choose Subject")
 
         # Bind events
-        self.class_combobox.bind("<<ComboboxSelected>>", self.select_class)
-        self.subject_combobox.bind("<<ComboboxSelected>>", self.select_class)
+        self.class_combobox.bind("<<ComboboxSelected>>", self.selector)
+        self.subject_combobox.bind("<<ComboboxSelected>>", self.selector)
 
         # Style the comboboxes
         style = ttk.Style()
@@ -1506,7 +1500,7 @@ class School_Portal:
 
         query = """
             SELECT s.fname, s.lname, s.gender, s.form, s.class_, s.subject,
-                s.classScore, s.examScore, s.totalScore, s.grade
+                   s.classScore, s.examScore, s.totalScore, s.grade
             FROM academic_records a
             JOIN students_records s ON s.id = a.student_id
             WHERE a.year = ? AND a.period = ? ORDER BY s.lname
@@ -1525,7 +1519,7 @@ class School_Portal:
 
 
    #========================================== Select Records ======================================================
-    def select_class(self, event=None):
+    def selector(self, event=None):
         """Filter records based on the logged-in user? role and assignments"""
         try:
             # Get selected class and subject from the Comboboxes
@@ -1533,7 +1527,7 @@ class School_Portal:
             selected_subject = self.subject_combobox.get()
 
             if not hasattr(self, 'selected_year') or not hasattr(self, 'selected_period'):
-                self.show_message("Warning", "Please select Year and Period first.", "warning")
+                self.show_message("Warning", "Please select Year and Period first.", "info")
                 return
 
             # Validate selected class
@@ -1544,7 +1538,7 @@ class School_Portal:
             # Base query
             query = """
                 SELECT a.student_id, s.fname, s.lname, s.gender, s.form, s.class_, s.subject,
-                    s.classScore, s.examScore, s.totalScore, s.grade
+                       s.classScore, s.examScore, s.totalScore, s.grade
                 FROM academic_records a
                 JOIN students_records s ON s.id = a.student_id
                 WHERE a.year = ? AND a.period = ? AND s.class_ = ?
@@ -1595,11 +1589,12 @@ class School_Portal:
 
             # Base query with proper SQL formatting
             query = """
-                SELECT totalScore, COUNT(*) as frequency 
-                FROM students_records 
-                WHERE class_ = ?
+                SELECT s.totalScore, COUNT(*) as frequency 
+                FROM academic_records a
+                JOIN students_records s ON s.id =  a.student_id
+                WHERE  a.year = ? AND a.period = ? AND s.class_ = ? 
             """
-            parameters = [selected_class]
+            parameters = [self.selected_year, self.selected_period, selected_class]
 
             # Add subject filter
             if selected_subject and selected_subject != "Choose Subject":
@@ -1703,8 +1698,13 @@ class School_Portal:
                 return
 
             # Base query for total students using PostgreSQL parameter style
-            query_total = "SELECT COUNT(*) FROM students_records WHERE class_ = ?"
-            parameters = [selected_class]
+            query_total = """
+                SELECT COUNT(*) 
+                FROM academic_records a
+                JOIN students_records s ON s.id =  a.student_id
+                WHERE  a.year = ? AND a.period = ? AND s.class_ = ? 
+                """
+            parameters = [self.selected_year, self.selected_period, selected_class]
 
             # Add subject filter if selected
             if selected_subject and selected_subject != "Choose Subject":
@@ -1826,8 +1826,13 @@ class School_Portal:
                 return
 
             # Base query for total students
-            query_total = "SELECT COUNT(*) FROM students_records WHERE class_ = ?"
-            parameters = [selected_class]
+            query_total = """
+                SELECT COUNT(*) 
+                FROM academic_records a
+                JOIN students_records s ON s.id =  a.student_id
+                WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
+            """
+            parameters = [self.selected_year, self.selected_period, selected_class]
 
             if selected_subject and selected_subject != "Choose Subject":
                 query_total += " AND subject = ?"
@@ -1951,8 +1956,13 @@ class School_Portal:
                 return
 
             # Build and execute query
-            query = "SELECT * FROM students_records WHERE class_ = ?"
-            parameters = [selected_class]
+            query = """
+                SELECT s.grade 
+                FROM academic_records a
+                JOIN students_records s ON s.id =  a.student_id
+                WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
+                """
+            parameters = [self.selected_year, self.selected_period, selected_class]
 
             if selected_subject and selected_subject != "Choose Subject":
                 query += " AND subject = ?"
@@ -1986,7 +1996,7 @@ class School_Portal:
 
             # Count grades and display
             self.grade_labels = {}
-            grade_counts = Counter(record[10] for record in records)  # grade at index 10
+            grade_counts = Counter(record[0] for record in records)  # grade at index 10
 
             grades = [
                         "A1  Excellent", "B2  Very Good", "B3  Good", "C4  Credit",
@@ -2048,10 +2058,11 @@ class School_Portal:
             # Fetch data from database
             query = """
                 SELECT classScore, examScore, totalScore, gender 
-                FROM students_records 
-                WHERE class_ = ?
+                FROM academic_records a
+                JOIN students_records s ON s.id =  a.student_id
+                WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
             """
-            params = [selected_class]
+            params = [self.selected_year, self.selected_period, selected_class]
 
             if selected_subject and selected_subject != "Choose Subject":
                 query += " AND subject = ?"
@@ -2182,7 +2193,7 @@ class School_Portal:
                 bg="white").grid(row=0, column=0, columnspan=8, pady=10)
 
             Label(scrollable_frame, 
-                text=f"Class: {selected_class}   Subject: {selected_subject}", 
+                text=f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}", 
                 font=('inter', 12, 'bold'), 
                 bg="white").grid(row=1, column=0, columnspan=8, pady=5)
 
@@ -2199,13 +2210,13 @@ class School_Portal:
                     padx=5).grid(row=2, column=col, pady=5)
 
             # Get data
-                query = """
+            query = """
                     SELECT a.student_num, s.fname, s.lname, s.classScore, s.examScore, s.totalScore, s.grade 
                     FROM students_records s
                     JOIN academic_records a ON s.id = a.student_id
-                    WHERE s.class_ = ?
+                   WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
                 """
-            params = [selected_class]
+            params = [self.selected_year, self.selected_period, selected_class]
 
             if selected_subject and selected_subject != "Choose Subject":
                 query += " AND subject = ?"
@@ -2275,7 +2286,7 @@ class School_Portal:
                 temp_file_path = temp.name
                 temp.write("JUABOSO SENIOR HIGH SCHOOL (JUASEC)\n")
                 temp.write("=" * 80 + "\n")
-                temp.write(f"Class: {selected_class}   Subject: {selected_subject}\n")
+                temp.write(f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}\n")
                 temp.write("=" * 80 + "\n\n")
                 temp.write(f"{'ID':<5}{'First Name':<15}{'Last Name':<15}"
                         f"{'Class Score':<12}{'Exam Score':<12}{'Total Score':<12}{'Grade':<15}\n")
@@ -2312,40 +2323,44 @@ class School_Portal:
     def save_as_pdf(self, records, selected_class, selected_subject):
         """Save the records as PDF"""
         try:
-            # Ask for save location
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".pdf",
-                filetypes=[("PDF files", "*.pdf")],
-                title="Save PDF As"
-            )
+                # Ask for save location
+                file_path = filedialog.asksaveasfilename(
+                    defaultextension=".pdf",
+                    filetypes=[("PDF files", "*.pdf")],
+                    title="Save PDF As"
+                )
 
-            if not file_path:
-                return
+                if not file_path:
+                    return
 
-            # Create a temporary text file first
-            temp_file = "temp_print.txt"
-            with open(temp_file, "w") as file:
-                # Write header
-                file.write("JUABOSO SENIOR HIGH SCHOOL (JUASEC)\n")
-                file.write("=" * 80 + "\n")
-                file.write(f"Class: {selected_class}   Subject: {selected_subject}\n")
-                file.write("=" * 80 + "\n\n")
-                
-                # Write column headers
-                file.write(f"{'ID':<5}{'First Name':<15}{'Last Name':<15}{'Subject':<15}"
-                        f"{'Class Score':<12}{'Exam Score':<12}{'Total Score':<12}{'Grade':<15}\n")
-                file.write("-" * 80 + "\n")
-                
-                # Write data
+                pdf = FPDF()
+                pdf.add_page()
+                pdf.set_font("helvetica", "B", 14)
+                pdf.cell(0, 10, "JUABOSO SENIOR HIGH SCHOOL (JUASEC)", ln=True, align="C")
+                pdf.set_font("helvetica", "", 12)
+                pdf.cell(0, 10, f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}", ln=True, align="C")
+                pdf.ln(5)
+
+                # Table headers
+                pdf.set_font("helvetica", "B", 10)
+                headers = ["ID", "First Name", "Last Name", "Class Score", "Exam Score", "Total Score", "Grade"]
+                col_widths = [15, 30, 30, 25, 25, 25, 30]
+                for i, header in enumerate(headers):
+                    pdf.cell(col_widths[i], 8, header, border=1, align="C")
+                pdf.ln()
+
+                # Table data
+                pdf.set_font("helvetica", "", 10)
                 for record in records:
-                    file.write(f"{str(record[0]):<5}{record[1]:<15}{record[2]:<15}{record[3]:<15}"
-                            f"{str(record[4]):<12}{str(record[5]):<12}{str(record[6]):<12}{record[7]:<15}\n")
+                    for i, value in enumerate(record):
+                        pdf.cell(col_widths[i], 8, str(value), border=1, align="C")
+                    pdf.ln()
 
-            # Convert to PDF (requires a PDF conversion library)
-            self.show_message("Success", f"File saved as: {file_path}", "success")
+                pdf.output(file_path)
+                self.show_message("Success", f"File saved as: {file_path}", "success")
 
         except Exception as e:
-            self.show_message("Error", f"PDF save error: {e}", "error")
+                self.show_message("Error", f"PDF save error: {e}", "error")
   
 
   #======================== Print Report =========================
@@ -3661,7 +3676,6 @@ class School_Portal:
 
         
 #========================================= Password Change =========================================
-
     def change_password(self):
         """Open a window to change the password for the logged-in user"""
         change_password_window = Toplevel(self.root)
@@ -3806,7 +3820,6 @@ class School_Portal:
             window.destroy()
 
    #======================================== Authenticate User =========================================
-    #======================================== Authenticate User =========================================
     def authenticate_user(self, username, password, login_window, remember_me):
         """Authenticate the user and store their role and assignments"""
         try:
@@ -3831,24 +3844,19 @@ class School_Portal:
                     self.user_assignments = self.fetch_user_assignments(user_id)  # Fetch assignments for users
                 else:
                     self.user_assignments = None  # Admins have full access
-                self.show_message("Login Successful", f"Welcome to AcaDash! Visualize, Track, and Manage Academic Performance Effortlessly.", "success")
+                
+                self.create_menu_bar() 
                 login_window.destroy()  # Close the login window
-                self.root.deiconify()  # Show the main window
+                self.root.deiconify()
+                self.update_comboboxes() 
+                self.show_message(
+                    "Welcome",
+                     f"Welcome, {username}! to AcaDash. \nVisualize, Track, and Manage Academic Performance your students effortlessly.", 
+                     "success"
+                ) 
             else:
                 self.show_message("Login Failed", "Invalid username or password. Please try again.", "error")
-            if result and len(result) > 0:
-            
-                self.create_menu_bar()  # Create menu bar after role is set
-                login_window.destroy()
-                self.root.deiconify()
-            
-                pass
-            else:
-                self.show_message(
-                    "Invalid username or password.\nPlease try again.",
-                    "error"
-                )
-                
+                   
         except Exception as e:
             self.show_message(
                 f"Login failed: {str(e)}",
@@ -3880,7 +3888,7 @@ class School_Portal:
             self.class_combobox['values'] = assigned_classes
             self.subject_combobox['values'] = assigned_subjects
         
-        self.update_comboboxes()
+        
 
 
 #======================================= Message Box ==================================================
