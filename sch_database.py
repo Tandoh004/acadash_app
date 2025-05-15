@@ -419,12 +419,42 @@ class School_Portal:
         root.grid_columnconfigure(1, weight=1)
         root.grid_columnconfigure(2, weight=1)
 
-    #======================================== View Records =========================================
+    
+     #========================= Function Decorators =========================
 
+     #======================= Role-based Access Control =========================
+    def require_role(*roles):
+        def decorator(func):
+            def wrapper(self, *args, **kwargs):
+                if self.current_user_role not in roles:
+                    self.show_message("Access Denied", f"Only {', '.join(roles)}s can perform this action.", "warning")
+                    return
+                return func(self, *args, **kwargs)
+            return wrapper
+        return decorator  
+
+    #=======================Error Handler ===========================     
+    def db_error_handler(func):
+        def wrapper(self, *args, **kwargs):
+            try:
+                return func(self, *args, **kwargs)
+            except Exception as e:
+                self.show_message("Error", f"An error occurred: {e}", "error")
+        return wrapper
+    
+    #=============================== Clear Treeview =========================
+    def clear_treeview(func):
+        def wrapper(self, *args, **kwargs):
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+            return func(self, *args, **kwargs)
+        return wrapper
+    
+    
+  #======================================== View Records =========================================
+    @clear_treeview
     def view_records(self):
-        records = self.tree.get_children()
-        for element in records:
-            self.tree.delete(element)
+        """View all records in the Treeview"""
         query = "SELECT * FROM Students_records ORDER BY totalScore DESC"
         db_table = self.run_query(query)
         if db_table is None:  # Add this check
@@ -432,23 +462,16 @@ class School_Portal:
         for data in db_table:
             self.tree.insert("", 1000, text=data[0], values=(data[1:]))
 
- 
+
+
    #=======================  Delete Single  Record ===========================
-    
+    @db_error_handler
+    @require_role("admin")
     def delete_record(self):
         """Delete a single record (admin only)"""
-        if self.current_user_role != "admin":
-            self.show_message("Access Denied", "You do not have permission to delete records.", "warning")
-            return
-
-        self.message["text"] = ""
-        try:
-            self.tree.item(self.tree.selection())["values"][1]
         
-        except IndexError as e:
-            self.show_message("Info","Please select a record", "info")
-            return
-
+        self.tree.item(self.tree.selection())["values"][1]
+        
         self.message["text"] = ""
         number = self.tree.item(self.tree.selection())["text"]
         query = "DELETE FROM students_records WHERE id = ?"
@@ -464,69 +487,59 @@ class School_Portal:
 
 
     #================================ Delete all records ========================
+    @db_error_handler
+    @require_role("admin")
     def delete_all_records(self):
         """Delete a single record (admin only)"""
-        if self.current_user_role != "admin":
-            self.show_message("Access Denied", "You do not have permission to delete records.", "warning")
-            return
+               # Confirm the action with the user
+        confirm = messagebox.askquestion("Delete All Records", "Are you sure you want to delete all records? This action cannot be undone.")
+        if confirm == "yes":
+            # SQL query to delete all records
+            query = "DELETE FROM students_records"
+            self.run_query(query)  # Execute the query
+            self.show_message("Success","All records have been deleted successfully.","success")
+            
+            self.view_records()  # Refresh the Treeview to reflect the changes
         
-        try:
-                # Confirm the action with the user
-                confirm = messagebox.askquestion("Delete All Records", "Are you sure you want to delete all records? This action cannot be undone.")
-                if confirm == "yes":
-                    # SQL query to delete all records
-                    query = "DELETE FROM students_records"
-                    self.run_query(query)  # Execute the query
-                    self.show_message("Success","All records have been deleted successfully.","success")
-                    
-                    self.view_records()  # Refresh the Treeview to reflect the changes
-        except Exception as e:
-                self.show_message("Error", f"An error occurred: {e}", "error")
   
        
     #======================== Reset to State =========================
-
+    @db_error_handler
     def reset_to_home(self):
         """Reset the application to its default state without showing all records"""
-        try:
-            # Clear class and subject selections
-            self.class_combobox.set("Choose Class")
-            self.subject_combobox.set("Choose Subject")
+        # Clear class and subject selections
+        self.class_combobox.set("Choose Class")
+        self.subject_combobox.set("Choose Subject")
 
-            # Clear the Treeview
-            for item in self.tree.get_children():
-                self.tree.delete(item)
+        # Clear the Treeview
+        for item in self.tree.get_children():
+            self.tree.delete(item)
 
-            # Clear any graphs
-            for widget in self.root.grid_slaves(column=2):  # Clear column 2 (graphs)
-                widget.destroy()
+        # Clear any graphs
+        for widget in self.root.grid_slaves(column=2):  # Clear column 2 (graphs)
+            widget.destroy()
 
-            # Clear existing widgets
-            for widget in self.root.grid_slaves(row=0, column=1):
-                widget.destroy()
-          
-            # Reset the message display
-            self.message["text"] = ""
+        # Clear existing widgets
+        for widget in self.root.grid_slaves(row=0, column=1):
+            widget.destroy()
+        
+        # Reset the message display
+        self.message["text"] = ""
 
-            # Reset percentage display if it exists
-            if hasattr(self, 'percentage_label'):
-                self.percentage_label.config(text="")
+        # Reset percentage display if it exists
+        if hasattr(self, 'percentage_label'):
+            self.percentage_label.config(text="")
 
-            # Reset window size
-            self.adjust_window_size()
+        # Reset window size
+        self.adjust_window_size()
 
-            # Display success message
-            self.show_message("Success", "Application reset to home state.", "success")
-
-        except Exception as e:
-            self.show_message("Error", f"An error occurred while resetting: {e}", "error")
+        # Display success message
+        self.show_message("Success", "Application reset to home state.", "success")
 
      #=============================== Add New Record =======================================
+    @require_role("user")
     def add_record_window(self):
         """Open a Toplevel window to add a new record"""
-        if self.current_user_role != "user":
-            self.show_message("Access Denied", "Only users can add student records.", "warning")
-            return
         add_window = Toplevel(self.root)
         add_window.title("Add New Record")
         add_window.geometry("400x400")
@@ -625,6 +638,7 @@ class School_Portal:
         ).grid(row=10, column=1, pady=20, sticky=E)
 
     # Validation functions for numeric inputs
+    @db_error_handler
     def validate_score(self, new_value, max_score, score_type=""):
             """
             Validate numeric input for scores with a maximum limit.
@@ -640,137 +654,120 @@ class School_Portal:
             if not new_value:
                 return True
                 
-            try:
-                value = int(new_value)
-                if value <= max_score:
-                    return True
-                else:
-                    message = f" cannot exceed {max_score}"
-                    if score_type:
-                        message = f"{score_type} {message}"
-                    self.show_message("Info",message, "info")
-                    return False
-            except ValueError:
-                self.show_message("Info","Please enter numbers only", "info")
+            
+            value = int(new_value)
+            if value <= max_score:
+                return True
+            else:
+                message = f" cannot exceed {max_score}"
+                if score_type:
+                    message = f"{score_type} {message}"
+                self.show_message("Info",message, "info")
                 return False
-            
 
+            
     #=============================== Add Record from Window =======================================
+    @db_error_handler
     def add_record_from_window(self, fname, lname, gender, form, class_, subject, class_score, exam_score, year, period, window):
-        try:
             # Validate inputs
-            if not all([fname, lname, gender, form, class_, subject, class_score, exam_score, year, period]):
-                self.show_message("Warning", "All fields are required", "warning")
-                return
+        if not all([fname, lname, gender, form, class_, subject, class_score, exam_score, year, period]):
+            self.show_message("Warning", "All fields are required", "warning")
+            return
 
-            # Calculate total score
-            total_score = float(class_score) + float(exam_score)
+        # Calculate total score
+        total_score = float(class_score) + float(exam_score)
 
-            # Determine grade
-            if 75 <= total_score <= 100:
-                grade = "A1  Excellent"
-            elif 70 <= total_score <= 74:
-                grade = "B2  Very Good"
-            elif 65 <= total_score <= 69:
-                grade = "B3  Good"
-            elif 60 <= total_score <= 64:
-                grade = "C4  Credit"
-            elif 55 <= total_score <= 59:
-                grade = "C5  Credit"
-            elif 50 <= total_score <= 54:
-                grade = "C6  Credit"
-            elif 45 <= total_score <= 49:
-                grade = "D7  Pass"
-            elif 40 <= total_score <= 44:
-                grade = "E8  Pass"
-            else:
-                grade = "F9  Fail"
+        # Determine grade
+        if 75 <= total_score <= 100:
+            grade = "A1  Excellent"
+        elif 70 <= total_score <= 74:
+            grade = "B2  Very Good"
+        elif 65 <= total_score <= 69:
+            grade = "B3  Good"
+        elif 60 <= total_score <= 64:
+            grade = "C4  Credit"
+        elif 55 <= total_score <= 59:
+            grade = "C5  Credit"
+        elif 50 <= total_score <= 54:
+            grade = "C6  Credit"
+        elif 45 <= total_score <= 49:
+            grade = "D7  Pass"
+        elif 40 <= total_score <= 44:
+            grade = "E8  Pass"
+        else:
+            grade = "F9  Fail"
 
-            # Insert student record
-            insert_student = """
-                INSERT INTO students_records
-                (fname, lname, gender, form, class_, subject, classScore, examScore, totalScore, grade)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
-            params = (fname, lname, gender, form, class_, subject, float(class_score), float(exam_score), total_score, grade)
-            self.run_query(insert_student, params)
+        # Insert student record
+        insert_student = """
+            INSERT INTO students_records
+            (fname, lname, gender, form, class_, subject, classScore, examScore, totalScore, grade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        params = (fname, lname, gender, form, class_, subject, float(class_score), float(exam_score), total_score, grade)
+        self.run_query(insert_student, params)
 
-            # Fetch student_id
-            fetch_id = self.run_query("""
-                SELECT id FROM students_records
-                WHERE fname = ? AND lname = ? AND class_ = ?
-                ORDER BY id DESC LIMIT 1
-            """, (fname, lname, class_))
-            result = fetch_id.fetchone()
-            if not result:
-                self.show_message("Error", "Could not retrieve student ID.", "error")
-                return
-            student_id = result[0]
+        # Fetch student_id
+        fetch_id = self.run_query("""
+            SELECT id FROM students_records
+            WHERE fname = ? AND lname = ? AND class_ = ?
+            ORDER BY id DESC LIMIT 1
+        """, (fname, lname, class_))
+        result = fetch_id.fetchone()
+        if not result:
+            self.show_message("Error", "Could not retrieve student ID.", "error")
+            return
+        student_id = result[0]
 
-            # Generate student_num
-            prefix = lname[0].upper()
-            latest = self.run_query("""
-                SELECT student_num FROM academic_records
-                WHERE student_num LIKE ?
-                ORDER BY student_num DESC LIMIT 1
-            """, (f"{prefix}%",))
-            last_row = latest.fetchone()
-            if last_row and last_row[0]:
-                try:
-                    last_num = int(last_row[0][1:])
-                    student_num = f"{prefix}{last_num + 1:03d}"
-                except:
-                    student_num = f"{prefix}001"
-            else:
+        # Generate student_num
+        prefix = lname[0].upper()
+        latest = self.run_query("""
+            SELECT student_num FROM academic_records
+            WHERE student_num LIKE ?
+            ORDER BY student_num DESC LIMIT 1
+        """, (f"{prefix}%",))
+        last_row = latest.fetchone()
+        if last_row and last_row[0]:
+            try:
+                last_num = int(last_row[0][1:])
+                student_num = f"{prefix}{last_num + 1:03d}"
+            except:
                 student_num = f"{prefix}001"
+        else:
+            student_num = f"{prefix}001"
 
-            sch_code = "0040801"
-            index_num = f"{sch_code}{student_num}"
+        sch_code = "0040801"
+        index_num = f"{sch_code}{student_num}"
 
-            # Insert into academic_records
-            self.run_query("""
-                INSERT INTO academic_records (sch_code, student_num, index_num, student_id, year, period)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (sch_code, student_num, index_num, student_id, year, period))
+        # Insert into academic_records
+        self.run_query("""
+            INSERT INTO academic_records (sch_code, student_num, index_num, student_id, year, period)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (sch_code, student_num, index_num, student_id, year, period))
 
-            # Call the function to update previous records if any
-            self.update_academic_records_for_previous_entries(year, period)
+        # Call the function to update previous records if any
+        self.update_academic_records_for_previous_entries(year, period)
 
-            self.show_message("Success", f"Record for {fname} {lname} added successfully!", "success")
-
-        except Exception as e:
-            self.show_message("Error", f"Something went wrong: {e}", "error")
-            
+        self.show_message("Success", f"Record for {fname} {lname} added successfully!", "success")
             
             # Refresh the Treeview
-            self.view_records()
+        self.view_records()
 
             # Close the Toplevel window
-            window.destroy()
-        except ValueError:
-            self.show_message("Error", "Invalid numeric values for Class Score or Exam Score.", "error")
+        window.destroy()
 
 
      #=======================  Edit Record ===========================
+    @db_error_handler
+    @require_role("user")
     def edit_box(self):
-        """Open a window to edit the selected record"""
         """Open a window to edit the selected record (user only)"""
-        if self.current_user_role != "user":
-            self.show_message("Access Denied", "Only Teachers can edit student records.", "warning")
-            return
-
         self.message["text"] = ""
-        try:
-            # Get the selected record? values
-            selected_item = self.tree.selection()
-            if not selected_item:
-                raise IndexError("No record selected")
-            record_values = self.tree.item(selected_item)["values"]
-            record_id = self.tree.item(selected_item)["text"]  # Assuming ID is stored in the Treeview? text field
-        except IndexError:
-            self.show_message("Info","Please select a record to edit", "info")
-            
-            return
+        # Get the selected record? values
+        selected_item = self.tree.selection()
+        if not selected_item:
+            raise IndexError("No record selected")
+        record_values = self.tree.item(selected_item)["values"]
+        record_id = self.tree.item(selected_item)["text"]  # Assuming ID is stored in the Treeview? text field
         
         # Open the edit window
         self.edit_wind = Toplevel()
@@ -815,54 +812,47 @@ class School_Portal:
 
 
     #==================================== Save Changes / Update Changes  ======================================================
+    @db_error_handler
+    @require_role("user")
     def save_changes(self, record_id):
         """Save the changes made to the record"""
-        if self.current_user_role != "user":
-            self.show_message("Access Denied", "Only Teachers can edit student records.", "warning")
+        # Retrieve updated values from the entry fields
+        updated_values = {field: entry.get() for field, entry in self.edit_entries.items()}
+
+        # Validate that all fields are filled
+        if any(not value.strip() for value in updated_values.values()):
+            self.show_message("Warnibg", "All fields are required.", "Warning")
             return
-        try:
-            # Retrieve updated values from the entry fields
-            updated_values = {field: entry.get() for field, entry in self.edit_entries.items()}
 
-            # Validate that all fields are filled
-            if any(not value.strip() for value in updated_values.values()):
-                self.show_message("Warnibg", "All fields are required.", "Warning")
-                return
+        # Update the database
+        query = """
+            UPDATE students_records 
+            SET fname=?, lname=?, gender=?, form=?, class_=?, subject=?, classScore=?, examScore=?, totalScore=?, grade=? 
+            WHERE id=?
+        """
+        parameters = (
+            updated_values["First Name"],
+            updated_values["Last Name"],
+            updated_values["Gender"],
+            updated_values["Form"],
+            updated_values["Class"],
+            updated_values["Subject"],
+            updated_values["Class Score"],
+            updated_values["Exam Score"],
+            updated_values["Total Score"],
+            updated_values["Grade"],
+            record_id
+        )
+        self.run_query(query, parameters)
 
-            # Update the database
-            query = """
-                UPDATE students_records 
-                SET fname=?, lname=?, gender=?, form=?, class_=?, subject=?, classScore=?, examScore=?, totalScore=?, grade=? 
-                WHERE id=?
-            """
-            parameters = (
-                updated_values["First Name"],
-                updated_values["Last Name"],
-                updated_values["Gender"],
-                updated_values["Form"],
-                updated_values["Class"],
-                updated_values["Subject"],
-                updated_values["Class Score"],
-                updated_values["Exam Score"],
-                updated_values["Total Score"],
-                updated_values["Grade"],
-                record_id
-            )
-            self.run_query(query, parameters)
+        # Close the edit window and refresh the records
+        self.edit_wind.destroy()
+        self.show_message("Success",f"Record {record_id} updated successfully.", "success")
+        self.view_records()
 
-            # Close the edit window and refresh the records
-            self.edit_wind.destroy()
-            self.show_message("Success",f"Record {record_id} updated successfully.", "success")
-            self.view_records()
-        except Exception as e:
-            self.show_message("Error", f"An error occurred: {e}", "error")
-    
    #=================================================== Edit, Help, Exit Functions ==================================================
+    @require_role("user")
     def edit(self):
-        if self.current_user_role != "user":
-            self.show_message("Access Denied", "Only Teachers can edit student records.", "warning")
-            return
-
         ed = messagebox.askquestion("Edit Record", "Do you want to Edit a record")
         if ed == "yes":
             self.edit_box()
@@ -875,48 +865,45 @@ class School_Portal:
 
      #========================================= Search Record =========================================
     # Add the search function to the School_Portal class
+    @clear_treeview
+    @db_error_handler
     def search_record(self):
         def perform_search():
-            try:
-                # Get the search field and value
-                search_field = search_field_var.get()
-                search_value = search_value_var.get().strip()
+            # Get the search field and value
+            search_field = search_field_var.get()
+            search_value = search_value_var.get().strip()
 
-                # Validate input
-                if not search_field or search_field == "Choose Field":
-                    self.show_message("info", "Please select a valid search field.", "info")
-                    return
-                if not search_value:
-                    self.show_message("info", "Please enter a value to search.", "info")
-                    return
+            # Validate input
+            if not search_field or search_field == "Choose Field":
+                self.show_message("info", "Please select a valid search field.", "info")
+                return
+            if not search_value:
+                self.show_message("info", "Please enter a value to search.", "info")
+                return
 
-                # Build the query dynamically based on the selected field
-                query = f"SELECT * FROM students_records WHERE {search_field} LIKE ?"
-                parameters = [f"%{search_value}%"]
+            # Build the query dynamically based on the selected field
+            query = f"SELECT * FROM students_records WHERE {search_field} LIKE ?"
+            parameters = [f"%{search_value}%"]
 
-                # Execute the query
-                
-                # Execute the query using PostgreSQL cursor
-                
-                records = self.run_query(query, parameters).fetchall()
+            # Execute the query
+            
+            # Execute the query using PostgreSQL cursor
+            
+            records = self.run_query(query, parameters).fetchall()
 
-                # Check if any records were found
-                if not records:
-                    self.show_message("No Results", "No records found matching the search criteria.", "info")
-                    search_window.lift()  # Keep the search window on top
-                    return
+            # Check if any records were found
+            if not records:
+                self.show_message("No Results", "No records found matching the search criteria.", "info")
+                search_window.lift()  # Keep the search window on top
+                return
 
-                # Display the results in the Treeview
-                for item in self.tree.get_children():
-                    self.tree.delete(item)
-                for record in records:
-                    self.tree.insert("", "end", text=record[0], values=record[1:])
+            # Display the results in the Treeview
+            for record in records:
+                self.tree.insert("", "end", text=record[0], values=record[1:])
 
-                # Close the search window
-                search_window.destroy()
+            # Close the search window
+            search_window.destroy()
 
-            except Exception as e:
-                self.show_message("Error", f"An error occurred while searching: {e}", "error")
 
         # Create a Toplevel window for the search functionality
         search_window = Toplevel(self.root)
@@ -975,90 +962,78 @@ class School_Portal:
             return "F9  Fail"
         
      #========================================================== ===================================================
+    @db_error_handler
     def get_or_create_student_identity(self, fname, lname, gender, form, class_, year, period):
-        try:
-            # Find student in students_records
-            result = self.run_query("""
-                SELECT id FROM students_records
-                WHERE fname = ? AND lname = ? AND class_ = ?
-                ORDER BY id DESC LIMIT 1
-            """, (fname, lname, class_)).fetchone()
+        # Find student in students_records
+        result = self.run_query("""
+            SELECT id FROM students_records
+            WHERE fname = ? AND lname = ? AND class_ = ?
+            ORDER BY id DESC LIMIT 1
+        """, (fname, lname, class_)).fetchone()
 
-            if not result:
-                return None  # Don't insert student here
+        if not result:
+            return None  # Don't insert student here
 
-            student_id = result[0]
+        student_id = result[0]
 
-            # Check for existing academic record
-            academic = self.run_query("""
-                SELECT id FROM academic_records
-                WHERE student_id = ? AND year = ? AND period = ?
-            """, (student_id, year, period)).fetchone()
+        # Check for existing academic record
+        academic = self.run_query("""
+            SELECT id FROM academic_records
+            WHERE student_id = ? AND year = ? AND period = ?
+        """, (student_id, year, period)).fetchone()
 
-            if not academic:
-                # Generate student_num
-                prefix = lname[0].upper()
-                last_entry = self.run_query("""
-                    SELECT student_num FROM academic_records
-                    WHERE student_num LIKE ?
-                    ORDER BY student_num DESC LIMIT 1
-                """, (f"{prefix}%",)).fetchone()
+        if not academic:
+            # Generate student_num
+            prefix = lname[0].upper()
+            last_entry = self.run_query("""
+                SELECT student_num FROM academic_records
+                WHERE student_num LIKE ?
+                ORDER BY student_num DESC LIMIT 1
+            """, (f"{prefix}%",)).fetchone()
 
-                last_num = int(last_entry[0][1:]) if last_entry else 0
-                student_num = f"{prefix}{last_num + 1:03d}"
-                index_num = f"0040801{student_num}"
+            last_num = int(last_entry[0][1:]) if last_entry else 0
+            student_num = f"{prefix}{last_num + 1:03d}"
+            index_num = f"0040801{student_num}"
 
-                self.run_query("""
-                    INSERT INTO academic_records (sch_code, student_num, index_num, student_id, year, period)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, ("0040801", student_num, index_num, student_id, year, period))
-
-            return student_id
-
-        except Exception as e:
-            self.show_message("Error", f"Failed to get or create student identity: {e}", "error")
-            return None
-
-
-    def add_record_from_import(self, fname, lname, gender, form, class_, subject, class_score, exam_score, year, period):
-        try:
-            total_score = float(class_score) + float(exam_score)
-            grade = self.calculate_grade(total_score)
-
-            # Check if record exists
-            existing = self.run_query("""
-                SELECT id FROM students_records 
-                WHERE fname = ? AND lname = ? AND class_ = ? AND subject = ?
-            """, (fname, lname, class_, subject)).fetchone()
-
-            if existing:
-                self.run_query("""
-                    UPDATE students_records 
-                    SET gender=?, form=?, classScore=?, examScore=?, totalScore=?, grade=? 
-                    WHERE id=?
-                """, (gender, form, class_score, exam_score, total_score, grade, existing[0]))
-                return existing[0]
-
-            # Insert new record
             self.run_query("""
-                INSERT INTO students_records
-                (fname, lname, gender, form, class_, subject, classScore, examScore, totalScore, grade)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (fname, lname, gender, form, class_, subject, class_score, exam_score, total_score, grade))
+                INSERT INTO academic_records (sch_code, student_num, index_num, student_id, year, period)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, ("0040801", student_num, index_num, student_id, year, period))
 
-            return self.run_query("SELECT last_insert_rowid()").fetchone()[0]
+        return student_id
 
-        except Exception as e:
-            self.show_message("Error", f"Error saving student record: {e}", "error")
-            return None
+    @db_error_handler
+    def add_record_from_import(self, fname, lname, gender, form, class_, subject, class_score, exam_score, year, period):
+        total_score = float(class_score) + float(exam_score)
+        grade = self.calculate_grade(total_score)
 
+        # Check if record exists
+        existing = self.run_query("""
+            SELECT id FROM students_records 
+            WHERE fname = ? AND lname = ? AND class_ = ? AND subject = ?
+        """, (fname, lname, class_, subject)).fetchone()
 
+        if existing:
+            self.run_query("""
+                UPDATE students_records 
+                SET gender=?, form=?, classScore=?, examScore=?, totalScore=?, grade=? 
+                WHERE id=?
+            """, (gender, form, class_score, exam_score, total_score, grade, existing[0]))
+            return existing[0]
+
+        # Insert new record
+        self.run_query("""
+            INSERT INTO students_records
+            (fname, lname, gender, form, class_, subject, classScore, examScore, totalScore, grade)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (fname, lname, gender, form, class_, subject, class_score, exam_score, total_score, grade))
+
+        return self.run_query("SELECT last_insert_rowid()").fetchone()[0]
+
+    @db_error_handler
+    @require_role("user")
     def import_csv_data(self):
         """Import student records from a CSV file"""
-        if self.current_user_role != "user":
-            self.show_message("Access Denied", "Only Teachers can import student records.", "warning")
-            return
-
         # Show information dialog about required fields
         info_message = """
         CSV File Requirements:
@@ -1090,163 +1065,156 @@ class School_Portal:
         
         messagebox.showinfo("Import Requirements", info_message)
 
-        try:
-            # File dialog to select CSV file
-            file_path = filedialog.askopenfilename(
-                title="Select CSV File to Import",
-                filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
-            )
+    
+        # File dialog to select CSV file
+        file_path = filedialog.askopenfilename(
+            title="Select CSV File to Import",
+            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")]
+        )
+        
+        if not file_path:
+            return
+
+        # Read CSV file and validate structure
+        with open(file_path, 'r',encoding='utf-8') as file:
+            csv_reader = csv.DictReader(file)
             
-            if not file_path:
+            # Define required columns
+            required_columns = [
+                'fname', 'lname', 'gender', 'form', 'class_', 
+                'subject', 'classScore', 'examScore', 'year', 'period'
+            ]
+            
+            # Validate CSV structure
+            csv_columns = csv_reader.fieldnames
+            if not csv_columns:
+                self.show_message("Error", "CSV file is empty or improperly formatted.", "error")
                 return
 
-            # Read CSV file and validate structure
-            with open(file_path, 'r',encoding='utf-8') as file:
-                csv_reader = csv.DictReader(file)
-                
-                # Define required columns
-                required_columns = [
-                    'fname', 'lname', 'gender', 'form', 'class_', 
-                    'subject', 'classScore', 'examScore', 'year', 'period'
-                ]
-                
-                # Validate CSV structure
-                csv_columns = csv_reader.fieldnames
-                if not csv_columns:
-                    self.show_message("Error", "CSV file is empty or improperly formatted.", "error")
-                    return
+            missing_columns = [col for col in required_columns if col not in csv_columns]
+            if missing_columns:
+                self.show_message(
+                    "Error",
+                    f"Missing columns: {', '.join(missing_columns)}\nRequired columns: {', '.join(required_columns)}",
+                    "error"
+                )
+                return
 
-                missing_columns = [col for col in required_columns if col not in csv_columns]
-                if missing_columns:
-                    self.show_message(
-                        "Error",
-                        f"Missing columns: {', '.join(missing_columns)}\nRequired columns: {', '.join(required_columns)}",
-                        "error"
+            # Initialize counters
+            records_processed = 0
+            records_imported = 0
+            records_updated = 0
+            errors = []
+
+            # Process each row
+            for row_num, row in enumerate(csv_reader, start=2):
+                    class_score = float(row['classScore'].strip())
+                    exam_score = float(row['examScore'].strip())
+                    year = row['year'].strip()
+                    period = row['period'].strip()
+
+                    # Add or update student record
+                    student_id = self.add_record_from_import(
+                        fname=row['fname'].strip(),
+                        lname=row['lname'].strip(),
+                        gender=row['gender'].strip(),
+                        form=row['form'].strip(),
+                        class_=row['class_'].strip(),
+                        subject=row['subject'].strip(),
+                        class_score=class_score,
+                        exam_score=exam_score,
+                        year=year,
+                        period=period
                     )
-                    return
 
-                # Initialize counters
-                records_processed = 0
-                records_imported = 0
-                records_updated = 0
-                errors = []
+                    if not student_id:
+                        errors.append(f"Row {row_num}: Failed to insert/update student record")
+                        continue
 
-                # Process each row
-                for row_num, row in enumerate(csv_reader, start=2):
-                    try:
-                        class_score = float(row['classScore'].strip())
-                        exam_score = float(row['examScore'].strip())
-                        year = row['year'].strip()
-                        period = row['period'].strip()
+                    # Ensure academic record exists
+                    self.get_or_create_student_identity(
+                        fname=row['fname'].strip(),
+                        lname=row['lname'].strip(),
+                        gender=row['gender'].strip(),
+                        form=row['form'].strip(),
+                        class_=row['class_'].strip(),
+                        year=year,
+                        period=period
+                    )
 
-                        # Add or update student record
-                        student_id = self.add_record_from_import(
-                            fname=row['fname'].strip(),
-                            lname=row['lname'].strip(),
-                            gender=row['gender'].strip(),
-                            form=row['form'].strip(),
-                            class_=row['class_'].strip(),
-                            subject=row['subject'].strip(),
-                            class_score=class_score,
-                            exam_score=exam_score,
-                            year=year,
-                            period=period
-                        )
+                    records_imported += 1
 
-                        if not student_id:
-                            errors.append(f"Row {row_num}: Failed to insert/update student record")
-                            continue
-
-                        # Ensure academic record exists
-                        self.get_or_create_student_identity(
-                            fname=row['fname'].strip(),
-                            lname=row['lname'].strip(),
-                            gender=row['gender'].strip(),
-                            form=row['form'].strip(),
-                            class_=row['class_'].strip(),
-                            year=year,
-                            period=period
-                        )
-
-                        records_imported += 1
-
-                    except Exception as e:
-                        errors.append(f"Row {row_num}: {str(e)}")
 
                     records_processed += 1
 
-                # Show summary of the operation
-                self.show_message(
-                    "Import Summary",
-                    f"Total Records Processed: {records_processed}\n"
-                    f"Records Imported: {records_imported}\n"
-                    f"Records Updated: {records_updated}\n"
-                    f"Errors: {len(errors)}",
-                    "info"
-                )
-                if errors:
-                    error_message = "\n".join(errors)
-                    self.show_message("Errors During Import", error_message, "error")
+            # Show summary of the operation
+            self.show_message(
+                "Import Summary",
+                f"Total Records Processed: {records_processed}\n"
+                f"Records Imported: {records_imported}\n"
+                f"Records Updated: {records_updated}\n"
+                f"Errors: {len(errors)}",
+                "info"
+            )
+            if errors:
+                error_message = "\n".join(errors)
+                self.show_message("Errors During Import", error_message, "error")
 
 
-        except Exception as e:
-            self.show_message("Error", f"An error occurred during the CSV import: {str(e)}", "error")
-           
             # Refresh the display
-            self.view_records()
+        self.view_records()
 
     
      #===================================== export data to a CSV file ==========================================
+    @db_error_handler
     def export_data(self):
-        try:
-            # Get selected class and subject from the Comboboxes
-            selected_class = self.class_combobox.get()
-            selected_subject = self.subject_combobox.get()
+        # Get selected class and subject from the Comboboxes
+        selected_class = self.class_combobox.get()
+        selected_subject = self.subject_combobox.get()
 
-            # Validate selected class
-            if not selected_class or selected_class == "Choose Class":
-                messagebox.showerror("Info", "Please select a valid class.","info")
-                return
+        # Validate selected class
+        if not selected_class or selected_class == "Choose Class":
+            messagebox.showerror("Info", "Please select a valid class.","info")
+            return
 
-            # Base query
-            query = """
-                   SELECT a.student_id, a.sch_code, a.student_num, a.index_num,
-                          a.year, a.period, s.fname, s.lname, s.gender, s.form, s.class_,
-                          s.subject, s.classScore, s.examScore, s.totalScore, s.grade
-                   FROM academic_records a
-                   JOIN students_records s ON s.id =  a.student_id
-                   WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
-                   """
-            parameters = [self.selected_year, self.selected_period, selected_class ]
+        # Base query
+        query = """
+                SELECT a.student_id, a.sch_code, a.student_num, a.index_num,
+                        a.year, a.period, s.fname, s.lname, s.gender, s.form, s.class_,
+                        s.subject, s.classScore, s.examScore, s.totalScore, s.grade
+                FROM academic_records a
+                JOIN students_records s ON s.id =  a.student_id
+                WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
+                """
+        parameters = [self.selected_year, self.selected_period, selected_class ]
 
-            # Add subject filter if selected
-            if selected_subject and selected_subject != "Choose Subject":
-                query += " AND subject = ? ORDER BY totalScore DESC"
-                parameters.append(selected_subject)
+        # Add subject filter if selected
+        if selected_subject and selected_subject != "Choose Subject":
+            query += " AND subject = ? ORDER BY totalScore DESC"
+            parameters.append(selected_subject)
 
-            # Fetch filtered data from the database
-            records = self.run_query(query, parameters)
+        # Fetch filtered data from the database
+        records = self.run_query(query, parameters)
 
-            # Ask the user where to save the file
-            file_path = asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
-            if not file_path:
-                return  # User canceled the save dialog
+        # Ask the user where to save the file
+        file_path = asksaveasfilename(defaultextension=".csv", filetypes=[("CSV files", "*.csv")])
+        if not file_path:
+            return  # User canceled the save dialog
 
-            # Write data to the CSV file
-            with open(file_path, mode="w", newline="") as file:
-                writer = csv.writer(file)
-                writer.writerow(["Student_id","School_code" ,"Student_num","Index_num","Year","Period",
-                                 "First_Name", "Last_Name", "Gender", "Form","Class", "Subject",
-                                 "Class_Score","Exams_Score", "Total_Score", "Grade & Remarks"])  # Header row
-                for record in records:
-                    writer.writerow(record)
+        # Write data to the CSV file
+        with open(file_path, mode="w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Student_id","School_code" ,"Student_num","Index_num","Year","Period",
+                                "First_Name", "Last_Name", "Gender", "Form","Class", "Subject",
+                                "Class_Score","Exams_Score", "Total_Score", "Grade & Remarks"])  # Header row
+            for record in records:
+                writer.writerow(record)
 
-            self.show_message("Export Successful", f"Data exported successfully to {file_path}", "success")
-        except Exception as e:
-            self.show_message("Export Failed", f"An error occurred: {e}", "error")
-
+        self.show_message("Export Successful", f"Data exported successfully to {file_path}", "success")
+        
 
    #========================================= Export to Import ===========================================
+    @db_error_handler
     def export_csv_window(self):
         """Open a window to retrieve student data based on Class, Subject, Year, and Period."""
         export_win = Toplevel(self.root)
@@ -1293,39 +1261,36 @@ class School_Portal:
         subject_cb.set("Select")
 
          # --- Fetch Function ---
+        
         def load_records():
-            try:
-                classes = class_cb.get()
-                subjects = subject_cb.get()
+            classes = class_cb.get()
+            subjects = subject_cb.get()
 
-                selected_class =classes
-                selected_subject =subjects
+            selected_class =classes
+            selected_subject =subjects
 
-                if  not selected_class or not selected_subject:
-                    self.show_message("Info", "Please select both Class and Subject.", "info")
-                    return
+            if  not selected_class or not selected_subject:
+                self.show_message("Info", "Please select both Class and Subject.", "info")
+                return
 
-                query = """
-                    SELECT s.fname, s.lname, s.gender, s.form, s.class_, s.subject, s.classScore,
-                           s.examScore, a.year, a.period FROM students_records s
-                    JOIN academic_records a ON a.id = s.student_id
-                    WHERE s.class_=? AND s.subject=?
-                """
-                rows = self.run_query(query, (selected_class, selected_subject)).fetchall() 
+            query = """
+                SELECT s.fname, s.lname, s.gender, s.form, s.class_, s.subject, s.classScore,
+                        s.examScore, a.year, a.period FROM students_records s
+                JOIN academic_records a ON a.id = s.student_id
+                WHERE s.class_=? AND s.subject=?
+            """
+            rows = self.run_query(query, (selected_class, selected_subject)).fetchall() 
 
-                # Clear existing item in Treeview
-                for item in tree.get_children():
-                    tree.delete(item)
-                #Insert new row
-                for row in rows:
-                    tree.insert("", "end", values=row)
+            # Clear existing item in Treeview
+            for item in tree.get_children():
+                tree.delete(item)
+            #Insert new row
+            for row in rows:
+                tree.insert("", "end", values=row)
 
-                if not rows:
-                    self.show_message("Info", "records found for the selected class and subject.", "info")
-                    return
-
-            except Exception as e:
-                self.show_message("info", f"Error loading records: {e}", "info")
+            if not rows:
+                self.show_message("Info", "records found for the selected class and subject.", "info")
+                return
 
 
         # --- Treeview ---
@@ -1350,26 +1315,22 @@ class School_Portal:
 
        
         def export_to_csv():
-            try:
-                # Ask the user where to save the file
-                file_path = asksaveasfilename(
-                    defaultextension=".csv", 
-                    filetypes=[("CSV files", "*.csv"), ("All files","*.*")],
-                    title="Save as"
-                )
-                if not file_path:
-                    return  # User canceled the save dialog
-                # Write data to the CSV file
-                with open(file_path, mode="w", newline="") as f:
-                    writer = csv.writer(f)
-                    writer.writerow(cols)  # Header row
-                    for item in tree.get_children():
-                        row = tree.item(item)['values']
-                        writer.writerow(row)
-                self.show_message("Export Successful", f"Data exported successfully to {file_path}", "success")
-            except Exception as e:
-                self.show_message("Export Failed", f"An error occurred: {e}", "error")      
-
+            # Ask the user where to save the file
+            file_path = asksaveasfilename(
+                defaultextension=".csv", 
+                filetypes=[("CSV files", "*.csv"), ("All files","*.*")],
+                title="Save as"
+            )
+            if not file_path:
+                return  # User canceled the save dialog
+            # Write data to the CSV file
+            with open(file_path, mode="w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(cols)  # Header row
+                for item in tree.get_children():
+                    row = tree.item(item)['values']
+                    writer.writerow(row)
+            self.show_message("Export Successful", f"Data exported successfully to {file_path}", "success")
 
         Button(export_win, text="Show Records", command=load_records, bg="blue", fg="white").grid(row=1, column=5, pady=10)
         Button(export_win, text="Export", command=export_to_csv, bg="green", fg="white").grid(row=1, column=6, pady=10)
@@ -1486,6 +1447,7 @@ class School_Portal:
         stop_button = Button(filter_frame, text="Stop",bg="red",fg="white", command=self.stop_reading)
         stop_button.pack(side=LEFT, padx=5)
 
+    @clear_treeview
     def fetch_records(self):
         """Fetch and display student records based on year and period."""
         year = self.year_entry.get().strip()
@@ -1507,9 +1469,6 @@ class School_Portal:
         """
         results = self.run_query(query, (year, period)).fetchall()
 
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
         for record in results:
             self.tree.insert("", "end", values=record)
 
@@ -1519,55 +1478,49 @@ class School_Portal:
 
 
    #========================================== Select Records ======================================================
+    @clear_treeview
+    @db_error_handler
     def selector(self, event=None):
         """Filter records based on the logged-in user? role and assignments"""
-        try:
-            # Get selected class and subject from the Comboboxes
-            selected_class = self.class_combobox.get()
-            selected_subject = self.subject_combobox.get()
+        # Get selected class and subject from the Comboboxes
+        selected_class = self.class_combobox.get()
+        selected_subject = self.subject_combobox.get()
 
-            if not hasattr(self, 'selected_year') or not hasattr(self, 'selected_period'):
-                self.show_message("Warning", "Please select Year and Period first.", "info")
-                return
+        if not hasattr(self, 'selected_year') or not hasattr(self, 'selected_period'):
+            self.show_message("Warning", "Please select Year and Period first.", "info")
+            return
 
-            # Validate selected class
-            if not selected_class or selected_class == "Choose Class":
-                self.show_message("Info", "Please select a valid class.", "info")
-                return
+        # Validate selected class
+        if not selected_class or selected_class == "Choose Class":
+            self.show_message("Info", "Please select a valid class.", "info")
+            return
 
-            # Base query
-            query = """
-                SELECT a.student_id, s.fname, s.lname, s.gender, s.form, s.class_, s.subject,
-                       s.classScore, s.examScore, s.totalScore, s.grade
-                FROM academic_records a
-                JOIN students_records s ON s.id = a.student_id
-                WHERE a.year = ? AND a.period = ? AND s.class_ = ?
-            """
-            parameters = [self.selected_year, self.selected_period, selected_class]
-
-
-            # Add subject filter if selected
-            if selected_subject and selected_subject != "Choose Subject":
-                query += " AND subject = ?"
-                parameters.append(selected_subject)
+        # Base query
+        query = """
+            SELECT a.student_id, s.fname, s.lname, s.gender, s.form, s.class_, s.subject,
+                    s.classScore, s.examScore, s.totalScore, s.grade
+            FROM academic_records a
+            JOIN students_records s ON s.id = a.student_id
+            WHERE a.year = ? AND a.period = ? AND s.class_ = ?
+        """
+        parameters = [self.selected_year, self.selected_period, selected_class]
 
 
-            # Always add ORDER BY clause to sort by totalScore in descending order
-            query += " ORDER BY totalScore DESC"
+        # Add subject filter if selected
+        if selected_subject and selected_subject != "Choose Subject":
+            query += " AND subject = ?"
+            parameters.append(selected_subject)
 
-            # Execute the query
-            records = self.run_query(query, parameters).fetchall()
 
-            # Clear existing records in the Treeview
-            for item in self.tree.get_children():
-                self.tree.delete(item)
+        # Always add ORDER BY clause to sort by totalScore in descending order
+        query += " ORDER BY totalScore DESC"
 
-            # Insert filtered records into the Treeview
-            for record in records:
-                self.tree.insert("", "end", text=record[0], values=record[1:])
+        # Execute the query
+        records = self.run_query(query, parameters).fetchall()
 
-        except Exception as e:
-            self.show_message("Error", f"An error occurred: {e}", "error")
+        # Insert filtered records into the Treeview
+        for record in records:
+            self.tree.insert("", "end", text=record[0], values=record[1:])
             
         self.draw_hist() 
         self.draw_donut_plot()
@@ -1576,606 +1529,831 @@ class School_Portal:
 
 
     #================================================ Plot Histogram ====================================
+    @db_error_handler
     def draw_hist(self):
-        try:
-            # Get selected class and subject
-            selected_class = self.class_combobox.get()
-            selected_subject = self.subject_combobox.get()
+        # Get selected class and subject
+        selected_class = self.class_combobox.get()
+        selected_subject = self.subject_combobox.get()
 
-            # Validate selection
-            if not selected_class or selected_class == "Choose Class":
-                self.show_message("Info", "Please select a valid class.", "info")
-                return
+        # Validate selection
+        if not selected_class or selected_class == "Choose Class":
+            self.show_message("Info", "Please select a valid class.", "info")
+            return
 
-            # Base query with proper SQL formatting
-            query = """
-                SELECT s.totalScore, COUNT(*) as frequency 
-                FROM academic_records a
-                JOIN students_records s ON s.id =  a.student_id
-                WHERE  a.year = ? AND a.period = ? AND s.class_ = ? 
-            """
-            parameters = [self.selected_year, self.selected_period, selected_class]
+        # Base query with proper SQL formatting
+        query = """
+            SELECT s.totalScore, COUNT(*) as frequency 
+            FROM academic_records a
+            JOIN students_records s ON s.id =  a.student_id
+            WHERE  a.year = ? AND a.period = ? AND s.class_ = ? 
+        """
+        parameters = [self.selected_year, self.selected_period, selected_class]
 
-            # Add subject filter
-            if selected_subject and selected_subject != "Choose Subject":
-                query += " AND subject = ?"
-                parameters.append(selected_subject)
+        # Add subject filter
+        if selected_subject and selected_subject != "Choose Subject":
+            query += " AND subject = ?"
+            parameters.append(selected_subject)
 
-            query += " GROUP BY totalScore ORDER BY totalScore"
+        query += " GROUP BY totalScore ORDER BY totalScore"
 
-            # Execute query and fetch results
-            result = self.run_query(query, parameters).fetchall()
+        # Execute query and fetch results
+        result = self.run_query(query, parameters).fetchall()
 
-            if not result:
-                self.show_message("No Data", "No data available for plotting", "info")
-                return
+        if not result:
+            self.show_message("No Data", "No data available for plotting", "info")
+            return
 
-            # Create DataFrame directly from results
-            scores = [row[0] for row in result]
-            frequencies = [row[1] for row in result]
-            df = pd.DataFrame({
-                'Test Score': scores,
-                'Frequency': frequencies
-            })
+        # Create DataFrame directly from results
+        scores = [row[0] for row in result]
+        frequencies = [row[1] for row in result]
+        df = pd.DataFrame({
+            'Test Score': scores,
+            'Frequency': frequencies
+        })
 
-            # Clear existing graph
-            for widget in self.root.grid_slaves(row=0, column=2):
-                widget.destroy()
+        # Clear existing graph
+        for widget in self.root.grid_slaves(row=0, column=2):
+            widget.destroy()
 
-            # Create frame for graph
-            graph_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
-            graph_frame.grid(row=0, column=2, rowspan=5, padx=5, pady=5, sticky=NSEW)
-            
-            # Add title
-            Label(graph_frame, 
-                text=f" Academic Performance Analytics", 
-                font=("inter", 12,"bold"), 
-                fg="white",
-                bg="navy",
-                pady=5
-                ).pack(fill=X)
-            
+        # Create frame for graph
+        graph_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
+        graph_frame.grid(row=0, column=2, rowspan=5, padx=5, pady=5, sticky=NSEW)
+        
+        # Add title
+        Label(graph_frame, 
+            text=f" Academic Performance Analytics", 
+            font=("inter", 12,"bold"), 
+            fg="white",
+            bg="navy",
+            pady=5
+            ).pack(fill=X)
+        
 
-            # Create histogram
-            fig = plt.Figure(figsize=(5, 3.7), dpi=100)
-            ax = fig.add_subplot(111)
-            
-            # Plot using seaborn
-            seaborn.histplot(
-                data=df,
-                x='Test Score',
-                weights='Frequency',
-                bins=10,
-                kde=True,
-                ax=ax,
-                alpha=0.75,
-                linewidth=0.5,
-                edgecolor='black',
-                color='tab:green'
+        # Create histogram
+        fig = plt.Figure(figsize=(5, 3.7), dpi=100)
+        ax = fig.add_subplot(111)
+        
+        # Plot using seaborn
+        seaborn.histplot(
+            data=df,
+            x='Test Score',
+            weights='Frequency',
+            bins=10,
+            kde=True,
+            ax=ax,
+            alpha=0.75,
+            linewidth=0.5,
+            edgecolor='black',
+            color='tab:green'
+        )
+
+        # Style the KDE line
+        for line in ax.lines:
+            line.set_color('darkred')  # Change KDE line color
+            line.set_linestyle('-.')   # Make it dashed
+            line.set_linewidth(1.5)    # Make it slightly thicker
+        
+        # Customize plot
+        ax.set_title(
+            f"{selected_class} - {selected_subject or ""}\nScore Distribution Analysis",
+            fontsize=10,
+            color="darkblue" 
+
             )
+        ax.set_xlabel("Test Score")
+        ax.set_ylabel("Frequency")
 
-            # Style the KDE line
-            for line in ax.lines:
-                line.set_color('darkred')  # Change KDE line color
-                line.set_linestyle('-.')   # Make it dashed
-                line.set_linewidth(1.5)    # Make it slightly thicker
-            
-            # Customize plot
-            ax.set_title(
-                f"{selected_class} - {selected_subject or ""}\nScore Distribution Analysis",
-                fontsize=10,
-                color="darkblue" 
+        # Embed plot
+        canvas = FigureCanvasTkAgg(fig, master=graph_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=BOTH)
 
-                )
-            ax.set_xlabel("Test Score")
-            ax.set_ylabel("Frequency")
-
-            # Embed plot
-            canvas = FigureCanvasTkAgg(fig, master=graph_frame)
-            canvas.draw()
-            canvas.get_tk_widget().pack(fill=BOTH)
-
-            # Adjust window size
-            self.adjust_window_size()
-
-        except Exception as e:
-            self.show_message("Error", f"Histogram error: {e}", "error")
-
+        # Adjust window size
         self.adjust_window_size()
 
         
     #============================================= Plot Donut ===================================================
+    @db_error_handler
     def draw_donut_plot(self):
         """Create a donut plot showing pass/fail distribution"""
-        try:
-            # Get selected class and subject from the Comboboxes
-            selected_class = self.class_combobox.get()
-            selected_subject = self.subject_combobox.get()
+        # Get selected class and subject from the Comboboxes
+        selected_class = self.class_combobox.get()
+        selected_subject = self.subject_combobox.get()
 
-            # Validate selected class
-            if not selected_class or selected_class == "Choose Class":
-                self.show_message("Info", "Please select a valid class.", "info")
-                return
+        # Validate selected class
+        if not selected_class or selected_class == "Choose Class":
+            self.show_message("Info", "Please select a valid class.", "info")
+            return
 
-            # Base query for total students using PostgreSQL parameter style
-            query_total = """
-                SELECT COUNT(*) 
-                FROM academic_records a
-                JOIN students_records s ON s.id =  a.student_id
-                WHERE  a.year = ? AND a.period = ? AND s.class_ = ? 
-                """
-            parameters = [self.selected_year, self.selected_period, selected_class]
+        # Base query for total students using PostgreSQL parameter style
+        query_total = """
+            SELECT COUNT(*) 
+            FROM academic_records a
+            JOIN students_records s ON s.id =  a.student_id
+            WHERE  a.year = ? AND a.period = ? AND s.class_ = ? 
+            """
+        parameters = [self.selected_year, self.selected_period, selected_class]
 
-            # Add subject filter if selected
-            if selected_subject and selected_subject != "Choose Subject":
-                query_total += " AND subject = ?"
-                parameters.append(selected_subject)
-
-
-           # Query for passed students
-            query_pass = query_total + " AND totalScore >= 50"  # Assuming pass mark is 50
-
-            total_students = self.run_query(query_total, parameters).fetchone()[0]
-            passed_students = self.run_query(query_pass, parameters).fetchone()[0]
+        # Add subject filter if selected
+        if selected_subject and selected_subject != "Choose Subject":
+            query_total += " AND subject = ?"
+            parameters.append(selected_subject)
 
 
-            # Check if there are any students
-            if total_students == 0:
-                self.show_message("No Data", "No data available for the selected class and subject!", "info")
-                return
+        # Query for passed students
+        query_pass = query_total + " AND totalScore >= 50"  # Assuming pass mark is 50
 
-            # Calculate failed students
-            failed_students = total_students - passed_students
+        total_students = self.run_query(query_total, parameters).fetchone()[0]
+        passed_students = self.run_query(query_pass, parameters).fetchone()[0]
 
-            # Data for the donut plot
-            labels = ['Passed Students', 'Failed Students']
-            sizes = [passed_students, failed_students]
-            colors = ['#31a354', '#f83232']  # Green for pass, red for fail
 
-            # Create the donut plot
-            fig = plt.Figure(figsize=(5, 3), dpi=100)
-            ax = fig.add_subplot(111)
-            wedges, texts, autotexts = ax.pie(
-                sizes,
-                labels=None,
-                autopct='%1.1f%%',
-                startangle=45,
-                colors=colors,
-                textprops=dict(color="black", fontsize=10),
-                pctdistance= 1.23,
+        # Check if there are any students
+        if total_students == 0:
+            self.show_message("No Data", "No data available for the selected class and subject!", "info")
+            return
+
+        # Calculate failed students
+        failed_students = total_students - passed_students
+
+        # Data for the donut plot
+        labels = ['Passed Students', 'Failed Students']
+        sizes = [passed_students, failed_students]
+        colors = ['#31a354', '#f83232']  # Green for pass, red for fail
+
+        # Create the donut plot
+        fig = plt.Figure(figsize=(5, 3), dpi=100)
+        ax = fig.add_subplot(111)
+        wedges, texts, autotexts = ax.pie(
+            sizes,
+            labels=None,
+            autopct='%1.1f%%',
+            startangle=45,
+            colors=colors,
+            textprops=dict(color="black", fontsize=10),
+            pctdistance= 1.23,
+        )
+        ax.set_title(
+            f"Class Performance Overview: {selected_class} - {selected_subject}",
+            fontsize =(10),
+            pad=8, 
+            color="darkblue"                        
+        )
+        
+        legend = ax.legend(
+            labels, 
+            loc = 'center left', 
+            fontsize = 8,
+            frameon=True,
+            bbox_to_anchor=(0.85, 0.85),
+            edgecolor='darkgray'
             )
-            ax.set_title(
-                f"Class Performance Overview: {selected_class} - {selected_subject}",
-                fontsize =(10),
-                pad=8, 
-                color="darkblue"                        
-            )
-           
-            legend = ax.legend(
-                labels, 
-                loc = 'center left', 
-                fontsize = 8,
-                frameon=True,
-                bbox_to_anchor=(0.85, 0.85),
-                edgecolor='darkgray'
-                )
 
-            # Add a hole in the center
-            center_circle = plt.Circle((0, 0), 0.70, fc='white')
-            fig.gca().add_artist(center_circle)
+        # Add a hole in the center
+        center_circle = plt.Circle((0, 0), 0.70, fc='white')
+        fig.gca().add_artist(center_circle)
 
-            # Clear existing plot
-            for widget in self.root.grid_slaves(row=5, column=2):
-                widget.destroy()
+        # Clear existing plot
+        for widget in self.root.grid_slaves(row=5, column=2):
+            widget.destroy()
 
-            # Create frame for the plot
-            donut_frame = Frame(self.root, bg="white", bd=2, relief=RIDGE)
-            donut_frame.grid(row=5, column=2, rowspan=5, padx=5, sticky=NSEW)
-            self.root.grid_columnconfigure(2, weight=1)
-            self.root.grid_rowconfigure(5, weight=1)
+        # Create frame for the plot
+        donut_frame = Frame(self.root, bg="white", bd=2, relief=RIDGE)
+        donut_frame.grid(row=5, column=2, rowspan=5, padx=5, sticky=NSEW)
+        self.root.grid_columnconfigure(2, weight=1)
+        self.root.grid_rowconfigure(5, weight=1)
 
-            # Embed plot in frame
-            canvas = FigureCanvasTkAgg(fig, master=donut_frame)
-            canvas.draw()
-            canvas.get_tk_widget().grid(row=5, column=0)
+        # Embed plot in frame
+        canvas = FigureCanvasTkAgg(fig, master=donut_frame)
+        canvas.draw()
+        canvas.get_tk_widget().grid(row=5, column=0)
 
-        except Exception as e:
-            self.show_message("Error", f"An error occurred while generating the donut plot: {e}", "error")
-            
-            self.adjust_window_size()
+        self.adjust_window_size()
 
 
     def adjust_window_size(self):
-            """Adjust window size to fit all components including graphs"""
-            # Wait for all widgets to be updated
-            self.root.update_idletasks()
-            
-            # Calculate required width and height
-            required_width = 1200  # Base width
-            if self.root.grid_slaves(column=2):  # If graphs are present
-                required_width = 1600  # Width including graphs
-            
-            # Get screen dimensions
-            screen_width = self.root.winfo_screenwidth()
-            screen_height = self.root.winfo_screenheight()
-            
-            # Ensure window doesn't exceed screen size
-            window_width = min(required_width, screen_width * 0.9)
-            window_height = min(800, screen_height * 0.9)
-            
-            # Calculate center position
-            center_x = int((screen_width - window_width) / 2)
-            center_y = int((screen_height - window_height) / 2)
-            
-            # Set new window size and position
-            self.root.geometry(f"{int(window_width)}x{int(window_height)}+{center_x}+{center_y}")
+        """Adjust window size to fit all components including graphs"""
+        # Wait for all widgets to be updated
+        self.root.update_idletasks()
+        
+        # Calculate required width and height
+        required_width = 1200  # Base width
+        if self.root.grid_slaves(column=2):  # If graphs are present
+            required_width = 1600  # Width including graphs
+        
+        # Get screen dimensions
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        
+        # Ensure window doesn't exceed screen size
+        window_width = min(required_width, screen_width * 0.9)
+        window_height = min(800, screen_height * 0.9)
+        
+        # Calculate center position
+        center_x = int((screen_width - window_width) / 2)
+        center_y = int((screen_height - window_height) / 2)
+        
+        # Set new window size and position
+        self.root.geometry(f"{int(window_width)}x{int(window_height)}+{center_x}+{center_y}")
 
     
     #=================================== Percentage passed function ===========================
-
+    @db_error_handler
     def update_pass_percentage(self):
         """Calculate and display pass/fail percentage with arrow bars"""
-        try:
-            # Get selected class and subject
-            selected_class = self.class_combobox.get()
-            selected_subject = self.subject_combobox.get()
+        # Get selected class and subject
+        selected_class = self.class_combobox.get()
+        selected_subject = self.subject_combobox.get()
 
-            if not selected_class or selected_class == "Choose Class":
-                self.percentage_label.config(text="0%")
-                self.show_message("Info", "Please select a valid class.", "info")
-                return
+        if not selected_class or selected_class == "Choose Class":
+            self.percentage_label.config(text="0%")
+            self.show_message("Info", "Please select a valid class.", "info")
+            return
 
-            # Base query for total students
-            query_total = """
-                SELECT COUNT(*) 
-                FROM academic_records a
-                JOIN students_records s ON s.id =  a.student_id
-                WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
-            """
-            parameters = [self.selected_year, self.selected_period, selected_class]
+        # Base query for total students
+        query_total = """
+            SELECT COUNT(*) 
+            FROM academic_records a
+            JOIN students_records s ON s.id =  a.student_id
+            WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
+        """
+        parameters = [self.selected_year, self.selected_period, selected_class]
 
-            if selected_subject and selected_subject != "Choose Subject":
-                query_total += " AND subject = ?"
-                parameters.append(selected_subject)
+        if selected_subject and selected_subject != "Choose Subject":
+            query_total += " AND subject = ?"
+            parameters.append(selected_subject)
 
-            # Query for passed students
-            query_pass = query_total + " AND totalScore >= 50"
+        # Query for passed students
+        query_pass = query_total + " AND totalScore >= 50"
 
-            # Execute queries
-            total_students = self.run_query(query_total, parameters).fetchone()[0]
-            passed_students = self.run_query(query_pass, parameters).fetchone()[0]
-            failed_students = total_students - passed_students
+        # Execute queries
+        total_students = self.run_query(query_total, parameters).fetchone()[0]
+        passed_students = self.run_query(query_pass, parameters).fetchone()[0]
+        failed_students = total_students - passed_students
 
-            # Calculate percentages
-            if total_students > 0:
-                pass_percentage = (passed_students / total_students) * 100
-                fail_percentage = (failed_students / total_students) * 100
-            else:
-                pass_percentage = fail_percentage = 0
+        # Calculate percentages
+        if total_students > 0:
+            pass_percentage = (passed_students / total_students) * 100
+            fail_percentage = (failed_students / total_students) * 100
+        else:
+            pass_percentage = fail_percentage = 0
 
-            # Clear existing widgets
-            for widget in self.root.grid_slaves(row=0, column=1):
-                widget.destroy()
+        # Clear existing widgets
+        for widget in self.root.grid_slaves(row=0, column=1):
+            widget.destroy()
 
-            # Create frame for percentage display
-            percentage_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
-            percentage_frame.grid(row=0, column=1, padx=0, pady=20, sticky=NW)
+        # Create frame for percentage display
+        percentage_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
+        percentage_frame.grid(row=0, column=1, padx=0, pady=20, sticky=NW)
 
-            # Title
-            Label(percentage_frame,
-                text=f"{selected_class} Performance Overview",
-                font=("inter", 11, "bold"),
-                bg='navy',
-                fg='white',
-                pady=5,
-                width=20
-            ).pack(fill=X)
+        # Title
+        Label(percentage_frame,
+            text=f"{selected_class} Performance Overview",
+            font=("inter", 11, "bold"),
+            bg='navy',
+            fg='white',
+            pady=5,
+            width=20
+        ).pack(fill=X)
 
-            # Pass percentage arrow bar
-            pass_frame = Frame(percentage_frame, bg='white', pady=5)
-            pass_frame.pack(fill=X, padx=10)
-            Label(pass_frame,
-                text="Pass:",
-                font=("inter", 10),
-                bg='white',
-                width=8,
-                anchor=W
-            ).pack(side=LEFT)
-            
-            # Create canvas for pass arrow
-            pass_canvas = Canvas(pass_frame, height=20, width=150, bg='white', bd=0, highlightthickness=0)
-            pass_canvas.pack(side=LEFT, padx=5)
-            
-            # Draw pass arrow
-            arrow_width = (pass_percentage / 100) * 150
-            pass_canvas.create_rectangle(0, 5, arrow_width, 15, fill='green', width=0)
-            pass_canvas.create_polygon(
-                arrow_width, 0,
-                arrow_width, 20,
-                arrow_width + 10, 10,
-                fill='green'
-            )
-            Label(pass_frame,
-                text=f"{pass_percentage:.1f}%",
-                font=("inter", 10),
-                bg='white'
-            ).pack(side=LEFT)
+        # Pass percentage arrow bar
+        pass_frame = Frame(percentage_frame, bg='white', pady=5)
+        pass_frame.pack(fill=X, padx=10)
+        Label(pass_frame,
+            text="Pass:",
+            font=("inter", 10),
+            bg='white',
+            width=8,
+            anchor=W
+        ).pack(side=LEFT)
+        
+        # Create canvas for pass arrow
+        pass_canvas = Canvas(pass_frame, height=20, width=150, bg='white', bd=0, highlightthickness=0)
+        pass_canvas.pack(side=LEFT, padx=5)
+        
+        # Draw pass arrow
+        arrow_width = (pass_percentage / 100) * 150
+        pass_canvas.create_rectangle(0, 5, arrow_width, 15, fill='green', width=0)
+        pass_canvas.create_polygon(
+            arrow_width, 0,
+            arrow_width, 20,
+            arrow_width + 10, 10,
+            fill='green'
+        )
+        Label(pass_frame,
+            text=f"{pass_percentage:.1f}%",
+            font=("inter", 10),
+            bg='white'
+        ).pack(side=LEFT)
 
-            # Fail percentage arrow bar
-            fail_frame = Frame(percentage_frame, bg='white', pady=5)
-            fail_frame.pack(fill=X, padx=10)
-            Label(fail_frame,
-                text="Fail:",
-                font=("inter", 10),
-                bg='white',
-                width=8,
-                anchor=W
-            ).pack(side=LEFT)
-            
-            # Create canvas for fail arrow
-            fail_canvas = Canvas(fail_frame, height=20, width=150, bg='white', bd=0, highlightthickness=0)
-            fail_canvas.pack(side=LEFT, padx=5)
-            
-            # Draw fail arrow
-            arrow_width = (fail_percentage / 100) * 150
-            fail_canvas.create_rectangle(0, 5, arrow_width, 15, fill='red', width=0)
-            fail_canvas.create_polygon(
-                arrow_width, 0,
-                arrow_width, 20,
-                arrow_width + 10, 10,
-                fill='red'
-            )
-            Label(fail_frame,
-                text=f"{fail_percentage:.1f}%",
-                font=("inter", 10),
-                bg='white'
-            ).pack(side=LEFT)
+        # Fail percentage arrow bar
+        fail_frame = Frame(percentage_frame, bg='white', pady=5)
+        fail_frame.pack(fill=X, padx=10)
+        Label(fail_frame,
+            text="Fail:",
+            font=("inter", 10),
+            bg='white',
+            width=8,
+            anchor=W
+        ).pack(side=LEFT)
+        
+        # Create canvas for fail arrow
+        fail_canvas = Canvas(fail_frame, height=20, width=150, bg='white', bd=0, highlightthickness=0)
+        fail_canvas.pack(side=LEFT, padx=5)
+        
+        # Draw fail arrow
+        arrow_width = (fail_percentage / 100) * 150
+        fail_canvas.create_rectangle(0, 5, arrow_width, 15, fill='red', width=0)
+        fail_canvas.create_polygon(
+            arrow_width, 0,
+            arrow_width, 20,
+            arrow_width + 10, 10,
+            fill='red'
+        )
+        Label(fail_frame,
+            text=f"{fail_percentage:.1f}%",
+            font=("inter", 10),
+            bg='white'
+        ).pack(side=LEFT)
 
-            # Add total students count
-            Label(percentage_frame,
-                text=f"Total Students: {total_students}",
-                font=("inter", 10),
-                bg='white',
-                pady=5
-            ).pack()
-
-        except Exception as e:
-            self.show_message("Error", f"An error occurred while calculating percentage: {e}", "error")
+        # Add total students count
+        Label(percentage_frame,
+            text=f"Total Students: {total_students}",
+            font=("inter", 10),
+            bg='white',
+            pady=5
+        ).pack()
 
 
    #=======================Grade Summary =======================
+    @db_error_handler
     def grade_summary(self):
         """Create and display number of students per grade for selected class and subject."""
-        try:
-            # Get selected class and subject
-            selected_class = self.class_combobox.get()
-            selected_subject = self.subject_combobox.get()
+        # Get selected class and subject
+        selected_class = self.class_combobox.get()
+        selected_subject = self.subject_combobox.get()
 
-            if not selected_class or selected_class == "Choose Class":
-                self.show_message("Info", "Please select a valid class.", "info")
-                return
+        if not selected_class or selected_class == "Choose Class":
+            self.show_message("Info", "Please select a valid class.", "info")
+            return
 
-            # Build and execute query
-            query = """
-                SELECT s.grade 
-                FROM academic_records a
-                JOIN students_records s ON s.id =  a.student_id
-                WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
-                """
-            parameters = [self.selected_year, self.selected_period, selected_class]
+        # Build and execute query
+        query = """
+            SELECT s.grade 
+            FROM academic_records a
+            JOIN students_records s ON s.id =  a.student_id
+            WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
+            """
+        parameters = [self.selected_year, self.selected_period, selected_class]
 
-            if selected_subject and selected_subject != "Choose Subject":
-                query += " AND subject = ?"
-                parameters.append(selected_subject)
+        if selected_subject and selected_subject != "Choose Subject":
+            query += " AND subject = ?"
+            parameters.append(selected_subject)
 
-            query += " ORDER BY totalScore DESC"
-            records = self.run_query(query, parameters)
+        query += " ORDER BY totalScore DESC"
+        records = self.run_query(query, parameters)
 
+        
+        # Destroy old frame if it exists (to refresh content)
+        if hasattr(self, 'grade_frame') and self.grade_frame.winfo_exists():
+            self.grade_frame.destroy()
+
+        # Create frame
+        self.grade_frame = LabelFrame(
+            self.root,
+            bg='white',
+            padx=10,
+            relief=RIDGE
+        )
+        self.grade_frame.grid(row=0, column=1, sticky=E, padx=10, pady=20)
+
+        grade_label = Label(
+            self.grade_frame,
+            text="Grade Summary", 
+            font=('inter', 11, 'bold'), 
+            fg="white", bg="navy"
+        )
             
-            # Destroy old frame if it exists (to refresh content)
-            if hasattr(self, 'grade_frame') and self.grade_frame.winfo_exists():
-                self.grade_frame.destroy()
+        grade_label.pack(fill=BOTH)
 
-            # Create frame
-            self.grade_frame = LabelFrame(
-                self.root,
-                bg='white',
-                padx=10,
-                relief=RIDGE
-            )
-            self.grade_frame.grid(row=0, column=1, sticky=E, padx=10, pady=20)
+        # Count grades and display
+        self.grade_labels = {}
+        grade_counts = Counter(record[0] for record in records)  # grade at index 10
 
-            grade_label = Label(
+        grades = [
+                    "A1  Excellent", "B2  Very Good", "B3  Good", "C4  Credit",
+                    "C5  Credit", "C6  Credit", "D7  Pass", "E8  Pass", "F9  Fail"
+                ]
+
+
+        for grade in grades:
+            count = grade_counts.get(grade, 0)
+
+            label = Label(
                 self.grade_frame,
-                text="Grade Summary", 
-                font=('inter', 11, 'bold'), 
-                fg="white", bg="navy"
+                text=f"{grade}: {count}",
+                font=('inter', 10),
+                bg='white',
+                anchor='w'
             )
-             
-            grade_label.pack(fill=BOTH)
+            label.pack(fill=X, pady=1)
 
-            # Count grades and display
-            self.grade_labels = {}
-            grade_counts = Counter(record[0] for record in records)  # grade at index 10
+            self.grade_labels[grade] = label
 
-            grades = [
-                        "A1  Excellent", "B2  Very Good", "B3  Good", "C4  Credit",
-                        "C5  Credit", "C6  Credit", "D7  Pass", "E8  Pass", "F9  Fail"
-                    ]
+                # Add a red separator line **after D7**
+            if grade == "C6  Credit":
+                # Create a canvas wide enough for the full width of the frame
+                line_canvas = Canvas(self.grade_frame, height=2, width=100, bg='white', highlightthickness=0)
+                line_canvas.pack(fill=X, pady=5)
 
-
-            for grade in grades:
-                count = grade_counts.get(grade, 0)
-
-                label = Label(
-                    self.grade_frame,
-                    text=f"{grade}: {count}",
-                    font=('inter', 10),
-                    bg='white',
-                    anchor='w'
-                )
-                label.pack(fill=X, pady=1)
-
-                self.grade_labels[grade] = label
-
-                    # Add a red separator line **after D7**
-                if grade == "C6  Credit":
-                    # Create a canvas wide enough for the full width of the frame
-                    line_canvas = Canvas(self.grade_frame, height=2, width=100, bg='white', highlightthickness=0)
-                    line_canvas.pack(fill=X, pady=5)
-
-                    # Draw a horizontal red line across the canvas
-                    line_canvas.create_line(0, 2, 100, 2, fill='red', width=2)
-
-
-        except Exception as e:
-            self.show_message("Error", f"An error occurred: {e}", "error")
+                # Draw a horizontal red line across the canvas
+                line_canvas.create_line(0, 2, 100, 2, fill='red', width=2)
 
 
   #=============================== Class Stats ============================
+    @db_error_handler
     def show_class_stats(self):
         """Show descriptive statistics for the selected class"""
-        try:
-            # Get selected class and subject
-            selected_class = self.class_combobox.get()
-            selected_subject = self.subject_combobox.get()
+        # Get selected class and subject
+        selected_class = self.class_combobox.get()
+        selected_subject = self.subject_combobox.get()
 
-            # Validate selection
-            if not selected_class or selected_class == "Choose Class":
-                self.show_message("Info", "Please select a class first.", "info")
-                return
+        # Validate selection
+        if not selected_class or selected_class == "Choose Class":
+            self.show_message("Info", "Please select a class first.", "info")
+            return
 
-            # Create stats window
-            stats_window = Toplevel(self.root)
-            stats_window.title(f"Class Statistics - {selected_class}")
-            stats_window.geometry("800x600")
-            stats_window.config(bg="lavender")
-            stats_window.grab_set()
+        # Create stats window
+        stats_window = Toplevel(self.root)
+        stats_window.title(f"Class Statistics - {selected_class}")
+        stats_window.geometry("800x600")
+        stats_window.config(bg="lavender")
+        stats_window.grab_set()
 
-            # Center the window
-            self.center_window(stats_window)
+        # Center the window
+        self.center_window(stats_window)
 
-            # Fetch data from database
-            query = """
-                SELECT classScore, examScore, totalScore, gender 
-                FROM academic_records a
-                JOIN students_records s ON s.id =  a.student_id
-                WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
-            """
-            params = [self.selected_year, self.selected_period, selected_class]
+        # Fetch data from database
+        query = """
+            SELECT classScore, examScore, totalScore, gender 
+            FROM academic_records a
+            JOIN students_records s ON s.id =  a.student_id
+            WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
+        """
+        params = [self.selected_year, self.selected_period, selected_class]
 
-            if selected_subject and selected_subject != "Choose Subject":
-                query += " AND subject = ?"
-                params.append(selected_subject)
+        if selected_subject and selected_subject != "Choose Subject":
+            query += " AND subject = ?"
+            params.append(selected_subject)
 
-            result = self.run_query(query, params).fetchall()
-            
-            if not result:
-                self.show_message("Error", "No data available for selected criteria.", "error")
-                stats_window.destroy()
-                return
+        result = self.run_query(query, params).fetchall()
+        
+        if not result:
+            self.show_message("Error", "No data available for selected criteria.", "error")
+            stats_window.destroy()
+            return
 
-            # Convert to pandas DataFrame
-            df = pd.DataFrame(result, columns=['Class Score', 'Exam Score', 'Total Score', 'Gender'])
+        # Convert to pandas DataFrame
+        df = pd.DataFrame(result, columns=['Class Score', 'Exam Score', 'Total Score', 'Gender'])
 
-            # Calculate descriptive statistics
-            stats_frame = Frame(stats_window, bg="lavender", bd=2, relief=RIDGE)
-            stats_frame.pack(fill=X, padx=10, pady=10)
+        # Calculate descriptive statistics
+        stats_frame = Frame(stats_window, bg="lavender", bd=2, relief=RIDGE)
+        stats_frame.pack(fill=X, padx=10, pady=10)
 
-            stats_label = Label(
-                stats_frame,
-                text="Descriptive Statistics",
-                font=("inter", 12, "bold"),
-                bg="navy",
-                fg="white",
-                pady=5
+        stats_label = Label(
+            stats_frame,
+            text="Descriptive Statistics",
+            font=("inter", 12, "bold"),
+            bg="navy",
+            fg="white",
+            pady=5
+        )
+        stats_label.pack(fill=X)
+
+        # Create statistics table
+        stats_text = Text(stats_frame, height=8, width=80, font=("Courier", 10))
+        stats_text.pack(padx=10, pady=5)
+
+        # Calculate and display statistics
+        for column in ['Class Score', 'Exam Score', 'Total Score']:
+            stats = df[column].describe()
+            stats_text.insert(END, f"\n{column:^30}\n")
+            stats_text.insert(END, "-" * 30 + "\n")
+            stats_text.insert(END, f"Mean     : {stats['mean']:>8.2f}\n")
+            stats_text.insert(END, f"Std Dev  : {stats['std']:>8.2f}\n")
+            stats_text.insert(END, f"Minimum  : {stats['min']:>8.2f}\n")
+            stats_text.insert(END, f"Maximum  : {stats['max']:>8.2f}\n")
+            stats_text.insert(END, "\n")
+
+        stats_text.config(state=DISABLED)
+
+        # Create gender comparison graph
+        graph_frame = Frame(stats_window, bg="lavender", bd=2, relief=RIDGE)
+        graph_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
+
+        fig = plt.Figure(figsize=(6, 4))
+        ax = fig.add_subplot(111)
+
+        # Calculate mean scores by gender
+        gender_stats = df.groupby('Gender')[['Class Score', 'Exam Score', 'Total Score']].mean()
+
+        # Create bar plot
+        bar_width = 0.25
+        index = np.arange(len(gender_stats.columns))
+
+        for i, gender in enumerate(gender_stats.index):
+            ax.bar(
+                index + i * bar_width,
+                gender_stats.loc[gender],
+                bar_width,
+                label=gender,
+                color='#0066CC' if gender == 'M' else '#92C5F9'
             )
-            stats_label.pack(fill=X)
 
-            # Create statistics table
-            stats_text = Text(stats_frame, height=8, width=80, font=("Courier", 10))
-            stats_text.pack(padx=10, pady=5)
+        # Customize plot
+        ax.set_ylabel('Mean Score')
+        ax.set_title(f'Performance by Gender - {selected_class} {selected_subject or ""}')
+        ax.set_xticks(index + bar_width / 2)
+        ax.set_xticklabels(['Class Score', 'Exam Score', 'Total Score'])
+        ax.legend()
 
-            # Calculate and display statistics
-            for column in ['Class Score', 'Exam Score', 'Total Score']:
-                stats = df[column].describe()
-                stats_text.insert(END, f"\n{column:^30}\n")
-                stats_text.insert(END, "-" * 30 + "\n")
-                stats_text.insert(END, f"Mean     : {stats['mean']:>8.2f}\n")
-                stats_text.insert(END, f"Std Dev  : {stats['std']:>8.2f}\n")
-                stats_text.insert(END, f"Minimum  : {stats['min']:>8.2f}\n")
-                stats_text.insert(END, f"Maximum  : {stats['max']:>8.2f}\n")
-                stats_text.insert(END, "\n")
-
-            stats_text.config(state=DISABLED)
-
-            # Create gender comparison graph
-            graph_frame = Frame(stats_window, bg="lavender", bd=2, relief=RIDGE)
-            graph_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
-
-            fig = plt.Figure(figsize=(6, 4))
-            ax = fig.add_subplot(111)
-
-            # Calculate mean scores by gender
-            gender_stats = df.groupby('Gender')[['Class Score', 'Exam Score', 'Total Score']].mean()
-
-            # Create bar plot
-            bar_width = 0.25
-            index = np.arange(len(gender_stats.columns))
-
-            for i, gender in enumerate(gender_stats.index):
-                ax.bar(
-                    index + i * bar_width,
-                    gender_stats.loc[gender],
-                    bar_width,
-                    label=gender,
-                    color='#0066CC' if gender == 'M' else '#92C5F9'
-                )
-
-            # Customize plot
-            ax.set_ylabel('Mean Score')
-            ax.set_title(f'Performance by Gender - {selected_class} {selected_subject or ""}')
-            ax.set_xticks(index + bar_width / 2)
-            ax.set_xticklabels(['Class Score', 'Exam Score', 'Total Score'])
-            ax.legend()
-
-            # Embed plot
-            canvas = FigureCanvasTkAgg(fig, master=graph_frame)
-            canvas.draw()
-            canvas.get_tk_widget().pack(fill=BOTH, expand=True)
-
-        except Exception as e:
-            self.show_message("Error", f"An error occurred: {str(e)}", "error")
-
+        # Embed plot
+        canvas = FigureCanvasTkAgg(fig, master=graph_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(fill=BOTH, expand=True)
 
 
     # ======================================== print data ==================================================
+    @db_error_handler
     def print_data(self):
         """Print records with preview option"""
-        try:
-            # Get selected class and subject
+        # Get selected class and subject
+        selected_class = self.class_combobox.get()
+        selected_subject = self.subject_combobox.get()
+
+        if not selected_class or selected_class == "Choose Class":
+            self.show_message("Info", "Please select a valid class.", "info")
+            return
+
+        # Create preview window
+        preview_window = Toplevel(self.root)
+        preview_window.title("Print Preview")
+        preview_window.geometry("1000x600")
+        preview_window.config(bg="white")
+        preview_window.grab_set()
+    
+
+        # Create preview frame
+        preview_frame = Frame(preview_window, bg="white", padx=20, pady=20)
+        preview_frame.pack(fill=BOTH, expand=True)
+
+        # Add scrollbar
+        canvas = Canvas(preview_frame, bg="white")
+        scrollbar = ttk.Scrollbar(preview_frame, orient=VERTICAL, command=canvas.yview)
+        scrollable_frame = Frame(canvas, bg="white")
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor=NW)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Header
+        Label(scrollable_frame, 
+            text="JUABOSO SENIOR HIGH SCHOOL (JUASEC)", 
+            font=('inter', 16, 'bold'), 
+            bg="white").grid(row=0, column=0, columnspan=8, pady=10)
+
+        Label(scrollable_frame, 
+            text=f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}", 
+            font=('inter', 12, 'bold'), 
+            bg="white").grid(row=1, column=0, columnspan=8, pady=5)
+
+        # Column headers
+        headers = ["ID", "First Name", "Last Name", "Class Score", "Exam Score", "Total Score", "Grade"]
+        for col, header in enumerate(headers):
+            Label(scrollable_frame, 
+                text=header, 
+                font=('inter', 10, 'bold'), 
+                bg="white",
+                borderwidth=1,
+                relief="solid",
+                width=15,
+                padx=5).grid(row=2, column=col, pady=5)
+
+        # Get data
+        query = """
+                SELECT a.student_num, s.fname, s.lname, s.classScore, s.examScore, s.totalScore, s.grade 
+                FROM students_records s
+                JOIN academic_records a ON s.id = a.student_id
+                WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
+            """
+        params = [self.selected_year, self.selected_period, selected_class]
+
+        if selected_subject and selected_subject != "Choose Subject":
+            query += " AND subject = ?"
+            params.append(selected_subject)
+
+        query += " ORDER BY totalScore DESC"
+        records = self.run_query(query, params).fetchall()
+
+        # Display data
+        for row_idx, record in enumerate(records, start=3):
+            for col_idx, value in enumerate(record):
+                Label(scrollable_frame, 
+                    text=str(value),
+                    font=('inter', 10),
+                    bg="white",
+                    borderwidth=1,
+                    relief="solid",
+                    width=15,
+                    padx=5).grid(row=row_idx, column=col_idx, pady=1)
+
+        # Layout for scrollable preview
+        canvas.grid(row=0, column=0, sticky=NSEW)
+        scrollbar.grid(row=0, column=1, sticky=NS)
+        preview_frame.grid_columnconfigure(0, weight=1)
+        preview_frame.grid_rowconfigure(0, weight=1)
+
+        # Buttons frame
+        button_frame = Frame(preview_window, bg="white", pady=10)
+        button_frame.pack(fill=X)
+
+        # Print button
+        Button(button_frame,
+            text="Print",
+            command=lambda: self.print_to_printer(records, selected_class, selected_subject),
+            bg="green",
+            fg="white",
+            font=("inter", 10, "bold"),
+            padx=20).pack(side=LEFT, padx=5)
+
+        # Save as PDF button
+        Button(button_frame,
+            text="Save as PDF",
+            command=lambda: self.save_as_pdf(records, selected_class, selected_subject),
+            bg="blue",
+            fg="white",
+            font=("inter", 10, "bold"),
+            padx=20).pack(side=LEFT, padx=5)
+
+        # Cancel button
+        Button(button_frame,
+            text="Cancel",
+            command=preview_window.destroy,
+            bg="red",
+            fg="white",
+            font=("inter", 10, "bold"),
+            padx=20).pack(side=LEFT, padx=5)
+
+
+    @db_error_handler
+    def print_to_printer(self, records, selected_class, selected_subject):
+        """Send the records to selected printer"""
+        # Create a temporary file
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp:
+            temp_file_path = temp.name
+            temp.write("JUABOSO SENIOR HIGH SCHOOL (JUASEC)\n")
+            temp.write("=" * 80 + "\n")
+            temp.write(f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}\n")
+            temp.write("=" * 80 + "\n\n")
+            temp.write(f"{'ID':<5}{'First Name':<15}{'Last Name':<15}"
+                    f"{'Class Score':<12}{'Exam Score':<12}{'Total Score':<12}{'Grade':<15}\n")
+
+            for record in records:
+                temp.write(f"{str(record[0]):<5}{record[1]:<15}{record[2]:<15}"
+                        f"{str(record[3]):<12}{str(record[4]):<12}{str(record[5]):<12}{record[6]:<15}\n")
+
+        # Prompt printer selection
+        printer_name = win32print.GetDefaultPrinter()
+        printers = [printer[2] for printer in win32print.EnumPrinters(2)]
+        
+        selected = simpledialog.askstring("Select Printer", f"Available printers:\n\n" +
+                                        "\n".join(printers) + "\n\nEnter printer name:",
+                                        initialvalue=printer_name)
+        if not selected or selected not in printers:
+            self.show_message("Cancelled", "Printing cancelled or invalid printer name.", "warning")
+            return
+
+        # Send to selected printer
+        win32api.ShellExecute(
+            0,
+            "printto",
+            temp_file_path,
+            f'"{selected}"',
+            ".",
+            0
+        )
+
+    @db_error_handler
+    def save_as_pdf(self, records, selected_class, selected_subject):
+        """Save the records as PDF"""
+            # Ask for save location
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            title="Save PDF As"
+        )
+
+        if not file_path:
+            return
+
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("helvetica", "B", 14)
+        pdf.cell(0, 10, "JUABOSO SENIOR HIGH SCHOOL (JUASEC)", ln=True, align="C")
+        pdf.set_font("helvetica", "", 12)
+        pdf.cell(0, 10, f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}", ln=True, align="C")
+        pdf.ln(5)
+
+        # Table headers
+        pdf.set_font("helvetica", "B", 10)
+        headers = ["ID", "First Name", "Last Name", "Class Score", "Exam Score", "Total Score", "Grade"]
+        col_widths = [15, 30, 30, 25, 25, 25, 30]
+        for i, header in enumerate(headers):
+            pdf.cell(col_widths[i], 8, header, border=1, align="C")
+        pdf.ln()
+
+        # Table data
+        pdf.set_font("helvetica", "", 10)
+        for record in records:
+            for i, value in enumerate(record):
+                pdf.cell(col_widths[i], 8, str(value), border=1, align="C")
+            pdf.ln()
+
+        pdf.output(file_path)
+        self.show_message("Success", f"File saved as: {file_path}", "success")
+
+
+  #======================== Print Report =========================
+    @db_error_handler
+    def print_report(self):
+        def generate_report():
+            # Get student details
+            selected_firstname = firstname_var.get().strip()
+            selected_lastname = lastname_var.get().strip()
             selected_class = self.class_combobox.get()
             selected_subject = self.subject_combobox.get()
 
+            # Validate inputs
+            if not selected_firstname or not selected_lastname:
+                self.show_message("Info", "Please enter both first and last name.", "info")
+                return
             if not selected_class or selected_class == "Choose Class":
                 self.show_message("Info", "Please select a valid class.", "info")
                 return
 
+            # Single query to fetch records with position calculation
+            query = """
+                SELECT 
+                    t1.fname,
+                    t1.lname,
+                    t1.subject,
+                    t1.totalScore,
+                    t1.grade,
+                    (
+                        SELECT COUNT(*) + 1 
+                        FROM students_records t2 
+                        WHERE t2.class_ = t1.class_ 
+                        AND t2.subject = t1.subject 
+                        AND t2.totalScore > t1.totalScore
+                    ) as position
+                FROM students_records t1
+                WHERE UPPER(t1.fname) = UPPER(?) 
+                AND UPPER(t1.lname) = UPPER(?) 
+                AND t1.class_ = ?
+            """
+            parameters = [selected_firstname, selected_lastname, selected_class]
+
+            # Add subject filter if selected
+            if selected_subject and selected_subject != "Choose Subject":
+                query += " AND t1.subject = ?"
+                parameters.append(selected_subject)
+
+            # Order by subject
+            query += " ORDER BY t1.subject"
+
+            # Execute query
+            records = self.run_query(query, parameters).fetchall()
+
+            if not records:
+                self.show_message("Error", "No records found for this student.", "error")
+                return
+
+            # Continue with displaying the report...
+
             # Create preview window
             preview_window = Toplevel(self.root)
-            preview_window.title("Print Preview")
-            preview_window.geometry("1000x600")
+            preview_window.title("Report Preview")
+            preview_window.geometry("900x600")
             preview_window.config(bg="white")
             preview_window.grab_set()
-        
 
-            # Create preview frame
-            preview_frame = Frame(preview_window, bg="white", padx=20, pady=20)
-            preview_frame.pack(fill=BOTH, expand=True)
 
-            # Add scrollbar
-            canvas = Canvas(preview_frame, bg="white")
-            scrollbar = ttk.Scrollbar(preview_frame, orient=VERTICAL, command=canvas.yview)
+            # Add scrollbar and canvas
+            canvas = Canvas(preview_window, bg="white")
+            scrollbar = ttk.Scrollbar(preview_window, orient=VERTICAL, command=canvas.yview)
             scrollable_frame = Frame(canvas, bg="white")
 
             scrollable_frame.bind(
@@ -2188,444 +2366,187 @@ class School_Portal:
 
             # Header
             Label(scrollable_frame, 
-                text="JUABOSO SENIOR HIGH SCHOOL (JUASEC)", 
-                font=('inter', 16, 'bold'), 
-                bg="white").grid(row=0, column=0, columnspan=8, pady=10)
+                text="JUABOSO SENIOR HIGH SCHOOL (JUASEC)",
+                font=('inter', 16, 'bold'),
+                bg="white").grid(row=0, column=0, columnspan=3, pady=10)
 
-            Label(scrollable_frame, 
-                text=f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}", 
-                font=('inter', 12, 'bold'), 
-                bg="white").grid(row=1, column=0, columnspan=8, pady=5)
+            Label(scrollable_frame,
+                text="STUDENT'S ACADEMIC PERFORMANCE",
+                font=('inter', 14, 'bold'),
+                bg="white").grid(row=1, column=0, columnspan=3, pady=5)
+
+            # Student details
+            details_frame = Frame(scrollable_frame, bg="white", relief=RIDGE, bd=2)
+            details_frame.grid(row=2, column=0, columnspan=3, padx=20, pady=10, sticky=EW)
+
+            Label(details_frame, text=f"Student Name: {selected_firstname} {selected_lastname}",
+                font=('inter', 12), bg="white").grid(row=0, column=0, padx=10, pady=5, sticky=W)
+            Label(details_frame, text=f"Class: {selected_class}",
+                font=('inter', 12), bg="white").grid(row=1, column=0, padx=10, pady=5, sticky=W)
 
             # Column headers
-            headers = ["ID", "First Name", "Last Name", "Class Score", "Exam Score", "Total Score", "Grade"]
+            headers = ["Subject", "Total Score", "Grade & Remarks", "Position"]
             for col, header in enumerate(headers):
-                Label(scrollable_frame, 
-                    text=header, 
-                    font=('inter', 10, 'bold'), 
+                Label(scrollable_frame, text=header,
+                    font=('inter', 11, 'bold'),
                     bg="white",
-                    borderwidth=1,
-                    relief="solid",
+                    relief=RIDGE,
                     width=15,
-                    padx=5).grid(row=2, column=col, pady=5)
+                    anchor=CENTER  # Center the header text
+                ).grid(row=3, column=col, padx=2, pady=5)
 
-            # Get data
-            query = """
-                    SELECT a.student_num, s.fname, s.lname, s.classScore, s.examScore, s.totalScore, s.grade 
-                    FROM students_records s
-                    JOIN academic_records a ON s.id = a.student_id
-                   WHERE  a.year = ? AND a.period = ? AND s.class_ = ?
-                """
-            params = [self.selected_year, self.selected_period, selected_class]
+            # The data rows
+            for row_idx, record in enumerate(records, start=4):
+                # Subject
+                Label(scrollable_frame, text=record[2],
+                    font=('inter', 10),
+                    bg="white",
+                    relief=RIDGE,
+                    width=20,
+                ).grid(row=row_idx, column=0, padx=2, pady=2)
+                
+                # Total Score
+                Label(scrollable_frame, text=str(record[3]),
+                    font=('inter', 10),
+                    bg="white",
+                    relief=RIDGE,
+                    width=20,
+                    anchor=CENTER  # Center the text
+                ).grid(row=row_idx, column=1, padx=2, pady=2)
+                
+                # Grade & Remarks
+                Label(scrollable_frame, text=record[4],
+                    font=('inter', 10),
+                    bg="white",
+                    relief=RIDGE,
+                    width=20,
+                    anchor=CENTER  # Center the text
+                ).grid(row=row_idx, column=2, padx=2, pady=2)
+                
+                # Position with suffix
+                position = record[-1]
+                suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(
+                    position if position < 20 else position % 10, 
+                    'th'
+                )
+                position_text = f"{position}{suffix}"
+                
+                Label(scrollable_frame, 
+                    text=position_text,
+                    font=('inter', 10, 'bold') if position <= 3 else ('inter', 10),
+                    fg='darkgreen' if position <= 3 else 'black',
+                    bg="white",
+                    relief=RIDGE,
+                    width=20,
+                    anchor=CENTER  # Center the text
+                ).grid(row=row_idx, column=3, padx=2, pady=2)
+            
+            # Add footer with editable remarks
+            footer_frame = Frame(scrollable_frame, bg="white", relief=RIDGE, bd=2)
+            footer_frame.grid(row=row_idx+1, column=0, columnspan=3, padx=20, pady=20, sticky=EW)
 
-            if selected_subject and selected_subject != "Choose Subject":
-                query += " AND subject = ?"
-                params.append(selected_subject)
+            # Add remarks text area
+            Label(footer_frame, text="Form Master's Remarks:", 
+                font=('inter', 10, 'bold'), bg="white").grid(row=0, column=0, padx=10, pady=5, sticky=W)
+            remarks_text = Text(footer_frame, height=3, width=50, font=('inter', 10))
+            remarks_text.grid(row=1, column=0, columnspan=2, padx=10, pady=5, sticky=EW)
 
-            query += " ORDER BY totalScore DESC"
-            records = self.run_query(query, params).fetchall()
+            # Add placeholder text
+            remarks_placeholder = "Enter remarks here (max 200 characters)..."
+            remarks_text.insert('1.0', remarks_placeholder)
+            remarks_text.config(fg='gray')
 
-            # Display data
-            for row_idx, record in enumerate(records, start=3):
-                for col_idx, value in enumerate(record):
-                    Label(scrollable_frame, 
-                        text=str(value),
-                        font=('inter', 10),
-                        bg="white",
-                        borderwidth=1,
-                        relief="solid",
-                        width=15,
-                        padx=5).grid(row=row_idx, column=col_idx, pady=1)
+            # Add events to handle placeholder text
+            def on_focus_in(event):
+                if remarks_text.get('1.0', 'end-1c') == remarks_placeholder:
+                    remarks_text.delete('1.0', END)
+                    remarks_text.config(fg='black')
 
-            # Layout for scrollable preview
-            canvas.grid(row=0, column=0, sticky=NSEW)
-            scrollbar.grid(row=0, column=1, sticky=NS)
-            preview_frame.grid_columnconfigure(0, weight=1)
-            preview_frame.grid_rowconfigure(0, weight=1)
+            def on_focus_out(event):
+                if not remarks_text.get('1.0', 'end-1c'):
+                    remarks_text.insert('1.0', remarks_placeholder)
+                    remarks_text.config(fg='gray')
+
+            remarks_text.bind('<FocusIn>', on_focus_in)
+            remarks_text.bind('<FocusOut>', on_focus_out)
+
+            # Limit text to 200 characters
+            def limit_chars(*args):
+                if len(remarks_text.get('1.0', END)) > 201:  # 201 accounts for newline char
+                    remarks_text.delete('200.0', END)
+
+            remarks_text.bind('<KeyPress>', limit_chars)
+
+            # Other footer elements
+            Label(footer_frame, text="Form Master Name:", 
+                font=('inter', 10), bg="white").grid(row=2, column=0, padx=10, pady=5, sticky=W)
+            name_entry = Entry(footer_frame, width=30, font=('inter', 10))
+            name_entry.grid(row=2, column=1, padx=10, pady=5, sticky=W)
+
+            Label(footer_frame, text="Date:", 
+                font=('inter', 10), bg="white").grid(row=3, column=0, padx=10, pady=5, sticky=W)
+            date_entry = Entry(footer_frame, width=30, font=('inter', 10))
+            date_entry.grid(row=3, column=1, padx=10, pady=5, sticky=W)
+            # Insert current date
+            current_date = datetime.datetime.now().strftime("%B %d, %Y")
+            date_entry.insert(0, current_date)
+
+            Label(footer_frame, text="Signature:", 
+                font=('inter', 10), bg="white").grid(row=4, column=0, padx=10, pady=5, sticky=W)
+            signature_entry = Entry(footer_frame, width=30, font=('inter', 10))
+            signature_entry.grid(row=4, column=1, padx=10, pady=5, sticky=W)
+
+
+                # Headmaster section / footer elements
+            Label(footer_frame, text="Headmaster Name:", 
+                font=('inter', 10), bg="white").grid(row=5, column=0, padx=10, pady=5, sticky=W)
+            name_entry = Entry(footer_frame, width=30, font=('inter', 10))
+            name_entry.grid(row=5, column=1, padx=10, pady=5, sticky=W)
+
+            Label(footer_frame, text="Date:", 
+                font=('inter', 10), bg="white").grid(row=6, column=0, padx=10, pady=5, sticky=W)
+            date_entry = Entry(footer_frame, width=30, font=('inter', 10))
+            date_entry.grid(row=6, column=1, padx=10, pady=5, sticky=W)
+            # Insert current date
+            current_date = datetime.datetime.now().strftime("%B %d, %Y")
+            date_entry.insert(0, current_date)
+
+            Label(footer_frame, text="Signature:", 
+                font=('inter', 10), bg="white").grid(row=7, column=0, padx=10, pady=5, sticky=W)
+            signature_entry = Entry(footer_frame, width=30, font=('inter', 10))
+            signature_entry.grid(row=7, column=1, padx=10, pady=5, sticky=W)
+
+            # Layout scrollbar and canvas
+            canvas.pack(side=LEFT, fill=BOTH, expand=True, padx=10, pady=10)
+            scrollbar.pack(side=RIGHT, fill=Y)
 
             # Buttons frame
-            button_frame = Frame(preview_window, bg="white", pady=10)
-            button_frame.pack(fill=X)
+            button_frame = Frame(preview_window, bg="white")
+            button_frame.pack(fill=X, pady=10)
 
-            # Print button
             Button(button_frame,
                 text="Print",
-                command=lambda: self.print_to_printer(records, selected_class, selected_subject),
+                command=lambda: self.print_report_to_printer(records, selected_firstname, 
+                    selected_lastname, selected_class),
                 bg="green",
                 fg="white",
-                font=("inter", 10, "bold"),
-                padx=20).pack(side=LEFT, padx=5)
+                font=("inter", 10, "bold")).pack(side=LEFT, padx=5)
 
-            # Save as PDF button
             Button(button_frame,
                 text="Save as PDF",
-                command=lambda: self.save_as_pdf(records, selected_class, selected_subject),
+                command=lambda: self.save_report_as_pdf(records, selected_firstname, 
+                    selected_lastname, selected_class),
                 bg="blue",
                 fg="white",
-                font=("inter", 10, "bold"),
-                padx=20).pack(side=LEFT, padx=5)
+                font=("inter", 10, "bold")).pack(side=LEFT, padx=5)
 
-            # Cancel button
             Button(button_frame,
-                text="Cancel",
+                text="Close",
                 command=preview_window.destroy,
                 bg="red",
                 fg="white",
-                font=("inter", 10, "bold"),
-                padx=20).pack(side=LEFT, padx=5)
+                font=("inter", 10, "bold")).pack(side=LEFT, padx=5)
 
-        except Exception as e:
-            self.show_message("Error", f"An error occurred: {e}", "error")
-
-
-    def print_to_printer(self, records, selected_class, selected_subject):
-        """Send the records to selected printer"""
-        try:
-            # Create a temporary file
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp:
-                temp_file_path = temp.name
-                temp.write("JUABOSO SENIOR HIGH SCHOOL (JUASEC)\n")
-                temp.write("=" * 80 + "\n")
-                temp.write(f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}\n")
-                temp.write("=" * 80 + "\n\n")
-                temp.write(f"{'ID':<5}{'First Name':<15}{'Last Name':<15}"
-                        f"{'Class Score':<12}{'Exam Score':<12}{'Total Score':<12}{'Grade':<15}\n")
-
-                for record in records:
-                    temp.write(f"{str(record[0]):<5}{record[1]:<15}{record[2]:<15}"
-                            f"{str(record[3]):<12}{str(record[4]):<12}{str(record[5]):<12}{record[6]:<15}\n")
-
-            # Prompt printer selection
-            printer_name = win32print.GetDefaultPrinter()
-            printers = [printer[2] for printer in win32print.EnumPrinters(2)]
-            
-            selected = simpledialog.askstring("Select Printer", f"Available printers:\n\n" +
-                                            "\n".join(printers) + "\n\nEnter printer name:",
-                                            initialvalue=printer_name)
-            if not selected or selected not in printers:
-                self.show_message("Cancelled", "Printing cancelled or invalid printer name.", "warning")
-                return
-
-            # Send to selected printer
-            win32api.ShellExecute(
-                0,
-                "printto",
-                temp_file_path,
-                f'"{selected}"',
-                ".",
-                0
-            )
-
-        except Exception as e:
-            self.show_message("Error", f"Print error: {e}", "error")
-
-
-    def save_as_pdf(self, records, selected_class, selected_subject):
-        """Save the records as PDF"""
-        try:
-                # Ask for save location
-                file_path = filedialog.asksaveasfilename(
-                    defaultextension=".pdf",
-                    filetypes=[("PDF files", "*.pdf")],
-                    title="Save PDF As"
-                )
-
-                if not file_path:
-                    return
-
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("helvetica", "B", 14)
-                pdf.cell(0, 10, "JUABOSO SENIOR HIGH SCHOOL (JUASEC)", ln=True, align="C")
-                pdf.set_font("helvetica", "", 12)
-                pdf.cell(0, 10, f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}", ln=True, align="C")
-                pdf.ln(5)
-
-                # Table headers
-                pdf.set_font("helvetica", "B", 10)
-                headers = ["ID", "First Name", "Last Name", "Class Score", "Exam Score", "Total Score", "Grade"]
-                col_widths = [15, 30, 30, 25, 25, 25, 30]
-                for i, header in enumerate(headers):
-                    pdf.cell(col_widths[i], 8, header, border=1, align="C")
-                pdf.ln()
-
-                # Table data
-                pdf.set_font("helvetica", "", 10)
-                for record in records:
-                    for i, value in enumerate(record):
-                        pdf.cell(col_widths[i], 8, str(value), border=1, align="C")
-                    pdf.ln()
-
-                pdf.output(file_path)
-                self.show_message("Success", f"File saved as: {file_path}", "success")
-
-        except Exception as e:
-                self.show_message("Error", f"PDF save error: {e}", "error")
-  
-
-  #======================== Print Report =========================
-    def print_report(self):
-        def generate_report():
-            try:
-                # Get student details
-                selected_firstname = firstname_var.get().strip()
-                selected_lastname = lastname_var.get().strip()
-                selected_class = self.class_combobox.get()
-                selected_subject = self.subject_combobox.get()
-
-                # Validate inputs
-                if not selected_firstname or not selected_lastname:
-                    self.show_message("Info", "Please enter both first and last name.", "info")
-                    return
-                if not selected_class or selected_class == "Choose Class":
-                    self.show_message("Info", "Please select a valid class.", "info")
-                    return
-
-                # Single query to fetch records with position calculation
-                query = """
-                    SELECT 
-                        t1.fname,
-                        t1.lname,
-                        t1.subject,
-                        t1.totalScore,
-                        t1.grade,
-                        (
-                            SELECT COUNT(*) + 1 
-                            FROM students_records t2 
-                            WHERE t2.class_ = t1.class_ 
-                            AND t2.subject = t1.subject 
-                            AND t2.totalScore > t1.totalScore
-                        ) as position
-                    FROM students_records t1
-                    WHERE UPPER(t1.fname) = UPPER(?) 
-                    AND UPPER(t1.lname) = UPPER(?) 
-                    AND t1.class_ = ?
-                """
-                parameters = [selected_firstname, selected_lastname, selected_class]
-
-                # Add subject filter if selected
-                if selected_subject and selected_subject != "Choose Subject":
-                    query += " AND t1.subject = ?"
-                    parameters.append(selected_subject)
-
-                # Order by subject
-                query += " ORDER BY t1.subject"
-
-                # Execute query
-                records = self.run_query(query, parameters).fetchall()
-
-                if not records:
-                    self.show_message("Error", "No records found for this student.", "error")
-                    return
-
-                # Continue with displaying the report...
-
-                # Create preview window
-                preview_window = Toplevel(self.root)
-                preview_window.title("Report Preview")
-                preview_window.geometry("900x600")
-                preview_window.config(bg="white")
-                preview_window.grab_set()
-
-
-                # Add scrollbar and canvas
-                canvas = Canvas(preview_window, bg="white")
-                scrollbar = ttk.Scrollbar(preview_window, orient=VERTICAL, command=canvas.yview)
-                scrollable_frame = Frame(canvas, bg="white")
-
-                scrollable_frame.bind(
-                    "<Configure>",
-                    lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-                )
-
-                canvas.create_window((0, 0), window=scrollable_frame, anchor=NW)
-                canvas.configure(yscrollcommand=scrollbar.set)
-
-                # Header
-                Label(scrollable_frame, 
-                    text="JUABOSO SENIOR HIGH SCHOOL (JUASEC)",
-                    font=('inter', 16, 'bold'),
-                    bg="white").grid(row=0, column=0, columnspan=3, pady=10)
-
-                Label(scrollable_frame,
-                    text="STUDENT'S ACADEMIC PERFORMANCE",
-                    font=('inter', 14, 'bold'),
-                    bg="white").grid(row=1, column=0, columnspan=3, pady=5)
-
-                # Student details
-                details_frame = Frame(scrollable_frame, bg="white", relief=RIDGE, bd=2)
-                details_frame.grid(row=2, column=0, columnspan=3, padx=20, pady=10, sticky=EW)
-
-                Label(details_frame, text=f"Student Name: {selected_firstname} {selected_lastname}",
-                    font=('inter', 12), bg="white").grid(row=0, column=0, padx=10, pady=5, sticky=W)
-                Label(details_frame, text=f"Class: {selected_class}",
-                    font=('inter', 12), bg="white").grid(row=1, column=0, padx=10, pady=5, sticky=W)
-
-                # Column headers
-                headers = ["Subject", "Total Score", "Grade & Remarks", "Position"]
-                for col, header in enumerate(headers):
-                    Label(scrollable_frame, text=header,
-                        font=('inter', 11, 'bold'),
-                        bg="white",
-                        relief=RIDGE,
-                        width=15,
-                        anchor=CENTER  # Center the header text
-                    ).grid(row=3, column=col, padx=2, pady=5)
-
-                # The data rows
-                for row_idx, record in enumerate(records, start=4):
-                    # Subject
-                    Label(scrollable_frame, text=record[2],
-                        font=('inter', 10),
-                        bg="white",
-                        relief=RIDGE,
-                        width=20,
-                    ).grid(row=row_idx, column=0, padx=2, pady=2)
-                    
-                    # Total Score
-                    Label(scrollable_frame, text=str(record[3]),
-                        font=('inter', 10),
-                        bg="white",
-                        relief=RIDGE,
-                        width=20,
-                        anchor=CENTER  # Center the text
-                    ).grid(row=row_idx, column=1, padx=2, pady=2)
-                    
-                    # Grade & Remarks
-                    Label(scrollable_frame, text=record[4],
-                        font=('inter', 10),
-                        bg="white",
-                        relief=RIDGE,
-                        width=20,
-                        anchor=CENTER  # Center the text
-                    ).grid(row=row_idx, column=2, padx=2, pady=2)
-                    
-                    # Position with suffix
-                    position = record[-1]
-                    suffix = {1: 'st', 2: 'nd', 3: 'rd'}.get(
-                        position if position < 20 else position % 10, 
-                        'th'
-                    )
-                    position_text = f"{position}{suffix}"
-                    
-                    Label(scrollable_frame, 
-                        text=position_text,
-                        font=('inter', 10, 'bold') if position <= 3 else ('inter', 10),
-                        fg='darkgreen' if position <= 3 else 'black',
-                        bg="white",
-                        relief=RIDGE,
-                        width=20,
-                        anchor=CENTER  # Center the text
-                    ).grid(row=row_idx, column=3, padx=2, pady=2)
-               
-                # Add footer with editable remarks
-                footer_frame = Frame(scrollable_frame, bg="white", relief=RIDGE, bd=2)
-                footer_frame.grid(row=row_idx+1, column=0, columnspan=3, padx=20, pady=20, sticky=EW)
-
-                # Add remarks text area
-                Label(footer_frame, text="Form Master's Remarks:", 
-                    font=('inter', 10, 'bold'), bg="white").grid(row=0, column=0, padx=10, pady=5, sticky=W)
-                remarks_text = Text(footer_frame, height=3, width=50, font=('inter', 10))
-                remarks_text.grid(row=1, column=0, columnspan=2, padx=10, pady=5, sticky=EW)
-
-                # Add placeholder text
-                remarks_placeholder = "Enter remarks here (max 200 characters)..."
-                remarks_text.insert('1.0', remarks_placeholder)
-                remarks_text.config(fg='gray')
-
-                # Add events to handle placeholder text
-                def on_focus_in(event):
-                    if remarks_text.get('1.0', 'end-1c') == remarks_placeholder:
-                        remarks_text.delete('1.0', END)
-                        remarks_text.config(fg='black')
-
-                def on_focus_out(event):
-                    if not remarks_text.get('1.0', 'end-1c'):
-                        remarks_text.insert('1.0', remarks_placeholder)
-                        remarks_text.config(fg='gray')
-
-                remarks_text.bind('<FocusIn>', on_focus_in)
-                remarks_text.bind('<FocusOut>', on_focus_out)
-
-                # Limit text to 200 characters
-                def limit_chars(*args):
-                    if len(remarks_text.get('1.0', END)) > 201:  # 201 accounts for newline char
-                        remarks_text.delete('200.0', END)
-
-                remarks_text.bind('<KeyPress>', limit_chars)
-
-                # Other footer elements
-                Label(footer_frame, text="Form Master Name:", 
-                    font=('inter', 10), bg="white").grid(row=2, column=0, padx=10, pady=5, sticky=W)
-                name_entry = Entry(footer_frame, width=30, font=('inter', 10))
-                name_entry.grid(row=2, column=1, padx=10, pady=5, sticky=W)
-
-                Label(footer_frame, text="Date:", 
-                    font=('inter', 10), bg="white").grid(row=3, column=0, padx=10, pady=5, sticky=W)
-                date_entry = Entry(footer_frame, width=30, font=('inter', 10))
-                date_entry.grid(row=3, column=1, padx=10, pady=5, sticky=W)
-                # Insert current date
-                current_date = datetime.datetime.now().strftime("%B %d, %Y")
-                date_entry.insert(0, current_date)
-
-                Label(footer_frame, text="Signature:", 
-                    font=('inter', 10), bg="white").grid(row=4, column=0, padx=10, pady=5, sticky=W)
-                signature_entry = Entry(footer_frame, width=30, font=('inter', 10))
-                signature_entry.grid(row=4, column=1, padx=10, pady=5, sticky=W)
-
-
-                 # Headmaster section / footer elements
-                Label(footer_frame, text="Headmaster Name:", 
-                    font=('inter', 10), bg="white").grid(row=5, column=0, padx=10, pady=5, sticky=W)
-                name_entry = Entry(footer_frame, width=30, font=('inter', 10))
-                name_entry.grid(row=5, column=1, padx=10, pady=5, sticky=W)
-
-                Label(footer_frame, text="Date:", 
-                    font=('inter', 10), bg="white").grid(row=6, column=0, padx=10, pady=5, sticky=W)
-                date_entry = Entry(footer_frame, width=30, font=('inter', 10))
-                date_entry.grid(row=6, column=1, padx=10, pady=5, sticky=W)
-                # Insert current date
-                current_date = datetime.datetime.now().strftime("%B %d, %Y")
-                date_entry.insert(0, current_date)
-
-                Label(footer_frame, text="Signature:", 
-                    font=('inter', 10), bg="white").grid(row=7, column=0, padx=10, pady=5, sticky=W)
-                signature_entry = Entry(footer_frame, width=30, font=('inter', 10))
-                signature_entry.grid(row=7, column=1, padx=10, pady=5, sticky=W)
-
-                # Layout scrollbar and canvas
-                canvas.pack(side=LEFT, fill=BOTH, expand=True, padx=10, pady=10)
-                scrollbar.pack(side=RIGHT, fill=Y)
-
-                # Buttons frame
-                button_frame = Frame(preview_window, bg="white")
-                button_frame.pack(fill=X, pady=10)
-
-                Button(button_frame,
-                    text="Print",
-                    command=lambda: self.print_report_to_printer(records, selected_firstname, 
-                        selected_lastname, selected_class),
-                    bg="green",
-                    fg="white",
-                    font=("inter", 10, "bold")).pack(side=LEFT, padx=5)
-
-                Button(button_frame,
-                    text="Save as PDF",
-                    command=lambda: self.save_report_as_pdf(records, selected_firstname, 
-                        selected_lastname, selected_class),
-                    bg="blue",
-                    fg="white",
-                    font=("inter", 10, "bold")).pack(side=LEFT, padx=5)
-
-                Button(button_frame,
-                    text="Close",
-                    command=preview_window.destroy,
-                    bg="red",
-                    fg="white",
-                    font=("inter", 10, "bold")).pack(side=LEFT, padx=5)
-
-            except Exception as e:
-                self.show_message("Error", f"An error occurred: {e}", "error")
 
         # Create input window
         report_window = Toplevel(self.root)
@@ -2656,178 +2577,163 @@ class School_Portal:
             fg="white",
             font=("inter", 10, "bold")).grid(row=2, column=1, pady=20, sticky=E)
         
+    @db_error_handler    
     def print_report_to_printer(self, records, firstname, lastname, selected_class):
         """Print student report to printer"""
-        try:
-            # Create a temporary file for printing
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as file:
-                temp_file_path = file.name
-                # Write header
-                file.write("\n")
-                file.write("JUABOSO SENIOR HIGH SCHOOL (JUASEC)\n")
-                file.write("=" * 80 + "\n")
-                file.write("STUDENT'S ACADEMIC PERFORMANCE REPORT\n")
-                file.write("=" * 80 + "\n\n")
+        # Create a temporary file for printing
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as file:
+            temp_file_path = file.name
+            # Write header
+            file.write("\n")
+            file.write("JUABOSO SENIOR HIGH SCHOOL (JUASEC)\n")
+            file.write("=" * 80 + "\n")
+            file.write("STUDENT'S ACADEMIC PERFORMANCE REPORT\n")
+            file.write("=" * 80 + "\n\n")
 
-                # Write student details
-                file.write(f"Student Name: {firstname} {lastname}\n")
-                file.write(f"Class: {selected_class}\n")
-                file.write("-" * 80 + "\n\n")
+            # Write student details
+            file.write(f"Student Name: {firstname} {lastname}\n")
+            file.write(f"Class: {selected_class}\n")
+            file.write("-" * 80 + "\n\n")
 
-                # Write column headers
-                file.write(f"{'Subject':<30}{'Total Score':<15}{'Grade & Remarks':<20}{'Position':<20}\n")
-                file.write("-" * 80 + "\n")
+            # Write column headers
+            file.write(f"{'Subject':<30}{'Total Score':<15}{'Grade & Remarks':<20}{'Position':<20}\n")
+            file.write("-" * 80 + "\n")
 
-                # Write subject records
-                for record in records:
-                    file.write(f"{record[2]:<30}{str(record[3]):<15}{record[4]:<20}{record[5]:<20}\n")
+            # Write subject records
+            for record in records:
+                file.write(f"{record[2]:<30}{str(record[3]):<15}{record[4]:<20}{record[5]:<20}\n")
 
-                file.write("\n" + "=" * 80 + "\n\n")
+            file.write("\n" + "=" * 80 + "\n\n")
 
-                # Add footer for signatures
-                file.write("Form Master's Remarks: .............................\n")
-                file.write("Form Master Name: .............................\n")
-                file.write("Date: .............................\n")
-                file.write("Signature: .............................\n")
+            # Add footer for signatures
+            file.write("Form Master's Remarks: .............................\n")
+            file.write("Form Master Name: .............................\n")
+            file.write("Date: .............................\n")
+            file.write("Signature: .............................\n")
 
-                file.write("\n")
+            file.write("\n")
 
-                #Headmaster Signature
-                # Add footer for signatures
-                file.write("Headmaster Name: .............................\n")
-                file.write("Date: .............................\n")
-                file.write("Signature: .............................\n")
-
-
-            # Send to printer
-            #os.startfile(temp_file_path, "print")
-
-        # Prompt printer selection
-            printer_name = win32print.GetDefaultPrinter()
-            printers = [printer[2] for printer in win32print.EnumPrinters(2)]
-            
-            selected = simpledialog.askstring("Select Printer", f"Available printers:\n\n" +
-                                            "\n".join(printers) + "\n\nEnter printer name:",
-                                            initialvalue=printer_name)
-            if not selected or selected not in printers:
-                self.show_message("Cancelled", "Printing cancelled or invalid printer name.", "warning")
-                return
-
-            # Send to selected printer
-            win32api.ShellExecute(
-                0,
-                "printto",
-                temp_file_path,
-                f'"{selected}"',
-                ".",
-                0
-            )
-
-        except Exception as e:
-            self.show_message("Error", f"Print error: {e}", "error")
+            #Headmaster Signature
+            # Add footer for signatures
+            file.write("Headmaster Name: .............................\n")
+            file.write("Date: .............................\n")
+            file.write("Signature: .............................\n")
 
 
+    # Prompt printer selection
+        printer_name = win32print.GetDefaultPrinter()
+        printers = [printer[2] for printer in win32print.EnumPrinters(2)]
+        
+        selected = simpledialog.askstring("Select Printer", f"Available printers:\n\n" +
+                                        "\n".join(printers) + "\n\nEnter printer name:",
+                                        initialvalue=printer_name)
+        if not selected or selected not in printers:
+            self.show_message("Cancelled", "Printing cancelled or invalid printer name.", "warning")
+            return
+
+        # Send to selected printer
+        win32api.ShellExecute(
+            0,
+            "printto",
+            temp_file_path,
+            f'"{selected}"',
+            ".",
+            0
+        )
+
+    @db_error_handler
     def save_report_as_pdf(self, records, firstname, lastname, selected_class):
         """Save student report as PDF"""
-        try:
-            # Ask for save location
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".pdf",
-                filetypes=[("PDF files", "*.pdf")],
-                title="Save Report As PDF"
-            )
+        # Ask for save location
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            title="Save Report As PDF"
+        )
 
-            if not file_path:
-                return
+        if not file_path:
+            return
 
-            # Create PDF document
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_auto_page_break(auto=True, margin=15)
+        # Create PDF document
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
 
-            # Header
-            pdf.set_font("helvetica", "B", 16)
-            pdf.cell(0, 10, "JUABOSO SENIOR HIGH SCHOOL (JUASEC)", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            pdf.cell(0, 10, "STUDENT'S ACADEMIC PERFORMANCE REPORT", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            pdf.ln(10)
+        # Header
+        pdf.set_font("helvetica", "B", 16)
+        pdf.cell(0, 10, "JUABOSO SENIOR HIGH SCHOOL (JUASEC)", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(0, 10, "STUDENT'S ACADEMIC PERFORMANCE REPORT", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(10)
 
-            # Student details
-            pdf.set_font("helvetica", "B", 12)
-            pdf.cell(0, 10, f"Student Name: {firstname} {lastname}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            pdf.cell(0, 10, f"Class: {selected_class}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            pdf.ln(10)
+        # Student details
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(0, 10, f"Student Name: {firstname} {lastname}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(0, 10, f"Class: {selected_class}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(10)
 
-            # Table headers
-            pdf.set_font("helvetica", "B", 11)
-            pdf.cell(50, 6, "Subject", border=1)
-            pdf.cell(40, 6, "Total Score", border=1)
-            pdf.cell(50, 6, "Grade & Remarks", border=1)
-            pdf.cell(30, 6, "Position", border=1, ln=True)
+        # Table headers
+        pdf.set_font("helvetica", "B", 11)
+        pdf.cell(50, 6, "Subject", border=1)
+        pdf.cell(40, 6, "Total Score", border=1)
+        pdf.cell(50, 6, "Grade & Remarks", border=1)
+        pdf.cell(30, 6, "Position", border=1, ln=True)
 
-            # Table data
-            pdf.set_font("helvetica", "", 11)
-            for record in records:
-                pdf.cell(50, 6, str(record[2]), border=1)
-                pdf.cell(40, 6, str(record[3]), border=1)
-                pdf.cell(50, 6, str(record[4]), border=1)
-                pdf.cell(30, 6, str(record[5]), border=1, ln=True)
-                        
-           # Footer
-            pdf.ln(20)
-            pdf.set_font("helvetica", "", 11)
-            
-            # Update all footer cells with new positioning parameters
-            footer_items = [
-                "Form Master's Remarks: .............................",
-                "Form Master Name: .............................",
-                "Date: .............................",
-                "Signature: .............................",
-                " ",  # Spacing
-                "Headmaster Name: .............................",
-                "Date: .............................",
-                "Signature: ............................."
-            ]
+        # Table data
+        pdf.set_font("helvetica", "", 11)
+        for record in records:
+            pdf.cell(50, 6, str(record[2]), border=1)
+            pdf.cell(40, 6, str(record[3]), border=1)
+            pdf.cell(50, 6, str(record[4]), border=1)
+            pdf.cell(30, 6, str(record[5]), border=1, ln=True)
+                    
+        # Footer
+        pdf.ln(20)
+        pdf.set_font("helvetica", "", 11)
+        
+        # Update all footer cells with new positioning parameters
+        footer_items = [
+            "Form Master's Remarks: .............................",
+            "Form Master Name: .............................",
+            "Date: .............................",
+            "Signature: .............................",
+            " ",  # Spacing
+            "Headmaster Name: .............................",
+            "Date: .............................",
+            "Signature: ............................."
+        ]
 
-            for item in footer_items:
-                pdf.cell(0, 10, item, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        for item in footer_items:
+            pdf.cell(0, 10, item, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-            # Save PDF
-            pdf.output(file_path)
-            self.show_message("Success", f"Report saved as: {file_path}", "success")
-
-        except Exception as e:
-            self.show_message("Error", f"PDF save error: {e}", "error")
-
+        # Save PDF
+        pdf.output(file_path)
+        self.show_message("Success", f"Report saved as: {file_path}", "success")
     
 
     #=============================== Convert report PDF to Word Docx ====================================
-
+    @db_error_handler
     def convert_pdf_docx(self):
-        try:
-            # File dialog to select PDF file
-            file_path = filedialog.askopenfilename(
-                title="Select PDF File to Import",
-                filetypes=[("PDF Files", "*.pdf"), ("All Files", "*.*")]
-            )
+        # File dialog to select PDF file
+        file_path = filedialog.askopenfilename(
+            title="Select PDF File to Import",
+            filetypes=[("PDF Files", "*.pdf"), ("All Files", "*.*")]
+        )
 
-            if not file_path:
-                return
+        if not file_path:
+            return
 
-            # Create the output .docx path
-            docx_path = os.path.splitext(file_path)[0] + ".docx"
+        # Create the output .docx path
+        docx_path = os.path.splitext(file_path)[0] + ".docx"
 
-            # Convert PDF to DOCX
-            cv = Converter(file_path)
-            cv.convert(docx_path, start=0 , end=None)
-            cv.close()
+        # Convert PDF to DOCX
+        cv = Converter(file_path)
+        cv.convert(docx_path, start=0 , end=None)
+        cv.close()
 
-            self.show_message("Success", f"Conversion complete: {docx_path}", "success")
-
-        except Exception as e:
-            self.show_message("Error", f"PDF to Docx conversion error: {e}", "error")
-
+        self.show_message("Success", f"Conversion complete: {docx_path}", "success")
 
     #================================= PDF Merger ====================================
+    @db_error_handler
     def merge_pdfs(self):
         # Select multiple PDF files
         file_paths = filedialog.askopenfilenames(
@@ -2846,38 +2752,32 @@ class School_Portal:
         if not output_path:
             return
 
-        try:
-            merger = PdfWriter()
-            for path in file_paths:
-                merger.append(path)
-            merger.write(output_path)
-            merger.close()
-            self.show_message("Success", "PDF files merged successfully!", "success")
-        except Exception as e:
-            self.show_message("Error", f"Failed to merge PDFs:\n{e}", "error" )
-
+        merger = PdfWriter()
+        for path in file_paths:
+            merger.append(path)
+        merger.write(output_path)
+        merger.close()
+        self.show_message("Success", "PDF files merged successfully!", "success")
 
     #=================================== Read text ======================================
+    @db_error_handler
     def read_treeview(self):
-        try:
-            # Make sure Treeview exists
-            if not hasattr(self, 'tree'):
-                print("Treeview not initialized.")
-                return
+        # Make sure Treeview exists
+        if not hasattr(self, 'tree'):
+            print("Treeview not initialized.")
+            return
 
-            # Initialize speech engine
-            speak = pyttsx3.init()
+        # Initialize speech engine
+        speak = pyttsx3.init()
 
-            # Iterate over all rows in the Treeview
-            for row_id in self.tree.get_children():
-                row_values = self.tree.item(row_id, "values")
-                if row_values:
-                    # Convert tuple to string and speak
-                    text = " | ".join(str(value) for value in row_values)
-                    self.engine.say(text)
-            self.engine.runAndWait()
-        except Exception as e:
-            print(f"Error reading treeview: {e}")
+        # Iterate over all rows in the Treeview
+        for row_id in self.tree.get_children():
+            row_values = self.tree.item(row_id, "values")
+            if row_values:
+                # Convert tuple to string and speak
+                text = " | ".join(str(value) for value in row_values)
+                self.engine.say(text)
+        self.engine.runAndWait()
 
     def stop_reading(self):
         self.engine.stop()
@@ -2895,7 +2795,7 @@ class School_Portal:
             nonlocal operator
             operator = ""
             txt_input.set("")
-
+        
         def equal():
             """Evaluate the expression and display the result."""
             nonlocal operator
@@ -3055,12 +2955,9 @@ class School_Portal:
 
 
       #======================================== Admin Assignment Section =========================================
+    @require_role("admin")
     def assign_class_subject(self):
         """Open a window to assign classes and subjects to users (admin only)"""
-        if self.current_user_role != "admin":
-            self.show_message("Access Denied", "You do not have permission to assign classes and subjects.", "warning")
-            return
-
         assign_window = Toplevel(self.root)
         assign_window.title("Assign Classes and Subjects")
         assign_window.geometry("450x600")
@@ -3173,6 +3070,7 @@ class School_Portal:
         ).grid(row=7 + len(class_list) // 3, column=1, pady=20, sticky=E)
 
 #======================================== Save Assignment =========================================
+    @db_error_handler
     def save_assignment(self, user, fname, lname, selected_classes, subject, window):
         """Save the assigned classes and subject to the database with duplicate check"""
         if not user or not subject:
@@ -3188,41 +3086,37 @@ class School_Portal:
             self.show_message("Error", "Please select at least one class.", "error")
             return
 
-        try:
-            # Insert teacher only if not already present
-            teacher_exists = self.run_query("SELECT 1 FROM teachers WHERE user_id = ?", (user_id,)).fetchone()
-            if not teacher_exists:
-                self.run_query("INSERT INTO teachers (user_id, fname, lname) VALUES (?, ?, ?)", (user_id, fname, lname))
+        # Insert teacher only if not already present
+        teacher_exists = self.run_query("SELECT 1 FROM teachers WHERE user_id = ?", (user_id,)).fetchone()
+        if not teacher_exists:
+            self.run_query("INSERT INTO teachers (user_id, fname, lname) VALUES (?, ?, ?)", (user_id, fname, lname))
 
-            # Track duplicates
-            duplicates = []
+        # Track duplicates
+        duplicates = []
 
-            for class_name in assigned_classes:
-                # Check if assignment already exists
-                existing = self.run_query(
-                    "SELECT 1 FROM assignments WHERE user_id = ? AND class = ? AND subject = ?",
-                    (user_id, class_name, subject)
-                ).fetchone()
+        for class_name in assigned_classes:
+            # Check if assignment already exists
+            existing = self.run_query(
+                "SELECT 1 FROM assignments WHERE user_id = ? AND class = ? AND subject = ?",
+                (user_id, class_name, subject)
+            ).fetchone()
 
-                if existing:
-                    duplicates.append(class_name)
-                    continue
+            if existing:
+                duplicates.append(class_name)
+                continue
 
-                # Insert assignment
-                self.run_query(
-                    "INSERT INTO assignments (user_id, class, subject) VALUES (?, ?, ?)",
-                    (user_id, class_name, subject)
-                )
+            # Insert assignment
+            self.run_query(
+                "INSERT INTO assignments (user_id, class, subject) VALUES (?, ?, ?)",
+                (user_id, class_name, subject)
+            )
 
-            if duplicates:
-                dup_text = ", ".join(duplicates)
-                self.show_message("Warning", f"Skipped existing assignments for: {dup_text}", "warning")
+        if duplicates:
+            dup_text = ", ".join(duplicates)
+            self.show_message("Warning", f"Skipped existing assignments for: {dup_text}", "warning")
 
-            self.show_message("Success", "Assignments processed successfully!", "success")
-            window.destroy()
-
-        except Exception as e:
-            self.show_message("Error", f"An error occurred: {e}", "error")
+        self.show_message("Success", "Assignments processed successfully!", "success")
+        window.destroy()
 
 
 
@@ -3599,12 +3493,9 @@ class School_Portal:
 
 
     #======================================== Sign Up  =========================================
+    @require_role("admin")
     def sign_up(self):
         """Display the sign-up window (admin only)"""
-        if self.current_user_role != "admin":
-            self.show_message("Access Denied", "You do not have permission to create new users.", "warning")
-            return
-
         sign_up_window = Toplevel(self.root)
         sign_up_window.title("Sign Up")
         sign_up_window.geometry("400x300")
@@ -3816,7 +3707,7 @@ class School_Portal:
         if result.rowcount == 0:
             self.show_message("Error", "Username not found.", "error")
         else:
-            self.show_message("Success", "Password reset successfully!", "success", "success")
+            self.show_message("Success", "Password reset successfully!", "success")
             window.destroy()
 
    #======================================== Authenticate User =========================================
@@ -4227,59 +4118,57 @@ class School_Portal:
 
     
     #============================================= Add records to previous entry =================== ======
+    @db_error_handler
     def update_academic_records_for_previous_entries(self, year, period):
-        try:
-            # Fetch students that don't have a corresponding record in academic_records
-            students_without_academic = self.run_query("""
-                SELECT sr.id, sr.fname, sr.lname, sr.class_
-                FROM students_records sr
-                LEFT JOIN academic_records ar
-                ON sr.id = ar.student_id
-                WHERE ar.student_id IS NULL
-            """)
-            rows = students_without_academic.fetchall()
+        # Fetch students that don't have a corresponding record in academic_records
+        students_without_academic = self.run_query("""
+            SELECT sr.id, sr.fname, sr.lname, sr.class_
+            FROM students_records sr
+            LEFT JOIN academic_records ar
+            ON sr.id = ar.student_id
+            WHERE ar.student_id IS NULL
+        """)
+        rows = students_without_academic.fetchall()
 
-            # Loop through each student and add missing records to academic_records
-            for row in rows:
-                student_id = row[0]
-                fname = row[1]
-                lname = row[2]
-                class_ = row[3]
+        # Loop through each student and add missing records to academic_records
+        for row in rows:
+            student_id = row[0]
+            fname = row[1]
+            lname = row[2]
+            class_ = row[3]
 
-                # Generate student_num
-                prefix = lname[0].upper()
-                latest = self.run_query("""
-                    SELECT student_num FROM academic_records
-                    WHERE student_num LIKE ?
-                    ORDER BY student_num DESC LIMIT 1
-                """, (f"{prefix}%",))
-                last_row = latest.fetchone()
+            # Generate student_num
+            prefix = lname[0].upper()
+            latest = self.run_query("""
+                SELECT student_num FROM academic_records
+                WHERE student_num LIKE ?
+                ORDER BY student_num DESC LIMIT 1
+            """, (f"{prefix}%",))
+            last_row = latest.fetchone()
 
-                if last_row and last_row[0]:
-                    try:
-                        last_num = int(last_row[0][1:])
-                        student_num = f"{prefix}{last_num + 1:03d}"
-                    except:
-                        student_num = f"{prefix}001"
-                else:
+            if last_row and last_row[0]:
+                try:
+                    last_num = int(last_row[0][1:])
+                    student_num = f"{prefix}{last_num + 1:03d}"
+                except:
                     student_num = f"{prefix}001"
+            else:
+                student_num = f"{prefix}001"
 
-                # Generate index_num using a fixed school code
-                sch_code = "0040801"
-                index_num = f"{sch_code}{student_num}"
+            # Generate index_num using a fixed school code
+            sch_code = "0040801"
+            index_num = f"{sch_code}{student_num}"
 
-                # Insert the missing academic record
-                self.run_query("""
-                    INSERT INTO academic_records (sch_code, student_num, index_num, student_id, year, period)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (sch_code, student_num, index_num, student_id, year, period))
+            # Insert the missing academic record
+            self.run_query("""
+                INSERT INTO academic_records (sch_code, student_num, index_num, student_id, year, period)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (sch_code, student_num, index_num, student_id, year, period))
 
             self.show_message("Success", "Academic records updated successfully for previous students!", "success")
-        except Exception as e:
-            self.show_message("Error", f"Something went wrong: {e}", "error")
-
+    
     #================================ Edit year and period
-
+    @db_error_handler
     def open_edit_year_period_window(self):
         """Open a Toplevel window to edit year and period"""
 
@@ -4300,6 +4189,7 @@ class School_Portal:
         period_entry = Entry(edit_window, width=30)
         period_entry.pack(pady=5)
 
+        
         # Submit Button
         def update_year_period():
             year = year_entry.get().strip()
@@ -4309,15 +4199,13 @@ class School_Portal:
                 messagebox.showerror("Input Error", "Both Year and Period are required.")
                 return
 
-            try:
-                self.run_query("""
-                    UPDATE academic_records SET year = ?, period = ?
-                """, (year, period))
-                messagebox.showinfo("Success", "Year and Period updated for all records.")
-                edit_window.destroy()
-                self.view_records()  # Optional: Refresh table
-            except Exception as e:
-                messagebox.showerror("Database Error", str(e))
+            self.run_query("""
+                UPDATE academic_records SET year = ?, period = ?
+            """, (year, period))
+            messagebox.showinfo("Success", "Year and Period updated for all records.")
+            edit_window.destroy()
+            self.view_records()  # Optional: Refresh table
+           
 
         Button(edit_window, text="Update", command=update_year_period).pack(pady=10)
 
