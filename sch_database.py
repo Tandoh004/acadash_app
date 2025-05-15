@@ -638,7 +638,7 @@ class School_Portal:
         ).grid(row=10, column=1, pady=20, sticky=E)
 
     # Validation functions for numeric inputs
-    @db_error_handler
+    
     def validate_score(self, new_value, max_score, score_type=""):
             """
             Validate numeric input for scores with a maximum limit.
@@ -655,16 +655,19 @@ class School_Portal:
                 return True
                 
             
-            value = int(new_value)
-            if value <= max_score:
-                return True
-            else:
-                message = f" cannot exceed {max_score}"
-                if score_type:
-                    message = f"{score_type} {message}"
-                self.show_message("Info",message, "info")
+            try:
+                value = int(new_value)
+                if value <= max_score:
+                    return True
+                else:
+                    message = f" cannot exceed {max_score}"
+                    if score_type:
+                        message = f"{score_type} {message}"
+                    self.show_message("Info",message, "info")
+                    return False
+            except ValueError:
+                self.show_message("Info","Please enter numbers only", "info")
                 return False
-
             
     #=============================== Add Record from Window =======================================
     @db_error_handler
@@ -757,11 +760,21 @@ class School_Portal:
 
 
      #=======================  Edit Record ===========================
-    @db_error_handler
     @require_role("user")
     def edit_box(self):
         """Open a window to edit the selected record (user only)"""
         self.message["text"] = ""
+        try:
+            # Get the selected record? values
+            selected_item = self.tree.selection()
+            if not selected_item:
+                raise IndexError("No record selected")
+            record_values = self.tree.item(selected_item)["values"]
+            record_id = self.tree.item(selected_item)["text"]  
+        except IndexError:
+            self.show_message("Info","Please select a record to edit", "info")
+            
+            return
         # Get the selected record? values
         selected_item = self.tree.selection()
         if not selected_item:
@@ -866,43 +879,49 @@ class School_Portal:
      #========================================= Search Record =========================================
     # Add the search function to the School_Portal class
     @clear_treeview
-    @db_error_handler
     def search_record(self):
         def perform_search():
-            # Get the search field and value
-            search_field = search_field_var.get()
-            search_value = search_value_var.get().strip()
+            try:
+                # Get the search field and value
+                search_field = search_field_var.get()
+                search_value = search_value_var.get().strip()
 
-            # Validate input
-            if not search_field or search_field == "Choose Field":
-                self.show_message("info", "Please select a valid search field.", "info")
-                return
-            if not search_value:
-                self.show_message("info", "Please enter a value to search.", "info")
-                return
+                # Validate input
+                if not search_field or search_field == "Choose Field":
+                    self.show_message("info", "Please select a valid search field.", "info")
+                    return
+                if not search_value:
+                    self.show_message("info", "Please enter a value to search.", "info")
+                    return
 
-            # Build the query dynamically based on the selected field
-            query = f"SELECT * FROM students_records WHERE {search_field} LIKE ?"
-            parameters = [f"%{search_value}%"]
+                # Build the query dynamically based on the selected field
+                query = f"SELECT * FROM students_records WHERE {search_field} LIKE ?"
+                parameters = [f"%{search_value}%"]
 
-            # Execute the query
-            
-            # Execute the query using PostgreSQL cursor
-            
-            records = self.run_query(query, parameters).fetchall()
+                # Execute the query
+                
+                # Execute the query using PostgreSQL cursor
+                
+                records = self.run_query(query, parameters).fetchall()
 
-            # Check if any records were found
-            if not records:
-                self.show_message("No Results", "No records found matching the search criteria.", "info")
-                search_window.lift()  # Keep the search window on top
-                return
+                # Check if any records were found
+                if not records:
+                    self.show_message("No Results", "No records found matching the search criteria.", "info")
+                    search_window.lift()  # Keep the search window on top
+                    return
 
-            # Display the results in the Treeview
-            for record in records:
-                self.tree.insert("", "end", text=record[0], values=record[1:])
+                # Display the results in the Treeview
+                for item in self.tree.get_children():
+                    self.tree.delete(item)
+                for record in records:
+                    self.tree.insert("", "end", text=record[0], values=record[1:])
 
-            # Close the search window
-            search_window.destroy()
+                # Close the search window
+                search_window.destroy()
+
+            except Exception as e:
+                self.show_message("Error", f"An error occurred while searching: {e}", "error")
+
 
 
         # Create a Toplevel window for the search functionality
@@ -1174,7 +1193,7 @@ class School_Portal:
 
         # Validate selected class
         if not selected_class or selected_class == "Choose Class":
-            messagebox.showerror("Info", "Please select a valid class.","info")
+            self.show_message("Info", "Please select a valid class.","info")
             return
 
         # Base query
@@ -2713,24 +2732,28 @@ class School_Portal:
     #=============================== Convert report PDF to Word Docx ====================================
     @db_error_handler
     def convert_pdf_docx(self):
-        # File dialog to select PDF file
-        file_path = filedialog.askopenfilename(
-            title="Select PDF File to Import",
-            filetypes=[("PDF Files", "*.pdf"), ("All Files", "*.*")]
-        )
+        try:
+            # File dialog to select PDF file
+            file_path = filedialog.askopenfilename(
+                title="Select PDF File to Import",
+                filetypes=[("PDF Files", "*.pdf"), ("All Files", "*.*")]
+            )
 
-        if not file_path:
-            return
+            if not file_path:
+                return
 
-        # Create the output .docx path
-        docx_path = os.path.splitext(file_path)[0] + ".docx"
+            # Create the output .docx path
+            docx_path = os.path.splitext(file_path)[0] + ".docx"
 
-        # Convert PDF to DOCX
-        cv = Converter(file_path)
-        cv.convert(docx_path, start=0 , end=None)
-        cv.close()
+            # Convert PDF to DOCX
+            cv = Converter(file_path)
+            cv.convert(docx_path, start=0 , end=None)
+            cv.close()
 
-        self.show_message("Success", f"Conversion complete: {docx_path}", "success")
+            self.show_message("Success", f"Conversion complete: {docx_path}", "success")
+
+        except Exception as e:
+            self.show_message("Error", f"PDF to Docx conversion error: {e}", "error")
 
     #================================= PDF Merger ====================================
     @db_error_handler
@@ -4167,49 +4190,6 @@ class School_Portal:
 
             self.show_message("Success", "Academic records updated successfully for previous students!", "success")
     
-    #================================ Edit year and period
-    @db_error_handler
-    def open_edit_year_period_window(self):
-        """Open a Toplevel window to edit year and period"""
-
-        # Create the Toplevel window
-        edit_window = Toplevel(self.root)
-        edit_window.title("Edit Year and Period")
-        edit_window.geometry("300x200")
-        edit_window.resizable(False, False)
-        edit_window.grab_set()
-
-        # Year Label and Entry
-        Label(edit_window, text="Academic Year:").pack(pady=5)
-        year_entry = Entry(edit_window, width=30)
-        year_entry.pack(pady=5)
-
-        # Period Label and Entry
-        Label(edit_window, text="Term/Period:").pack(pady=5)
-        period_entry = Entry(edit_window, width=30)
-        period_entry.pack(pady=5)
-
-        
-        # Submit Button
-        def update_year_period():
-            year = year_entry.get().strip()
-            period = period_entry.get().strip()
-
-            if not year or not period:
-                messagebox.showerror("Input Error", "Both Year and Period are required.")
-                return
-
-            self.run_query("""
-                UPDATE academic_records SET year = ?, period = ?
-            """, (year, period))
-            messagebox.showinfo("Success", "Year and Period updated for all records.")
-            edit_window.destroy()
-            self.view_records()  # Optional: Refresh table
-           
-
-        Button(edit_window, text="Update", command=update_year_period).pack(pady=10)
-
-
     
     #================================================ Main Function =========================================
 
