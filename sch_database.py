@@ -175,11 +175,13 @@ class School_Portal:
 
         #self.create_user_table() 
         #self.create_assignment_table()
+        self.create_classes_table()
+        self.create_subjects_table()
         self.create_selector_frame()
         self.setup_main_filter_frame()
         
-
-
+        #School name entered here
+        self.school_name = "JUABOSO SENIOR HIGH SCHOOL (JUASEC)"  # Default value
             # Set custom icon using embedded method
         try:
             icon = self.get_embedded_icon()
@@ -302,6 +304,14 @@ class School_Portal:
         self.message = Label(text="", fg="orange red", bg= 'lavender', font=('inter', 10, 'bold', 'italic'))
         self.message.grid(row=3, column=1, sticky=SW)
      
+
+    #======================= Set School Name ==============================
+    def set_school_name(self):
+        from tkinter.simpledialog import askstring
+        name = askstring("School Name", "Enter the name of your school:", initialvalue=self.school_name)
+        if name:
+            self.school_name = name
+
     #============================= Menu Function ==========================
     def create_menu_bar(self):
         """Create the application menu bar with role-based options"""
@@ -328,7 +338,7 @@ class School_Portal:
         # Common file menu items
         file_menu.add_command(label="Export as Excel", command=self.export_data)
         file_menu.add_separator()
-        file_menu.add_command(label="Show records", command=self.show_records_window)
+        file_menu.add_command(label="View Records", command=self.show_records_window)
         file_menu.add_command(label="Print Records", command=self.print_data)   
         if self.current_user_role == "admin":
             file_menu.add_command(label="Print Report", command=self.print_report)
@@ -348,13 +358,13 @@ class School_Portal:
             manage_menu = Menu(chooser, tearoff=0)
             manage_menu.add_command(label="Add New User", command=self.sign_up)
             manage_menu.add_separator()
+            manage_menu.add_command(label="Manage Classes & Subjects", command=self.manage_classes_subjects)
             manage_menu.add_command(label="Assign Classes & Subjects", command=self.assign_class_subject)
             manage_menu.add_command(label="Delete Assignment", command=self.open_delete_assignment_window)
             manage_menu.add_separator()
             manage_menu.add_command(label="Find Teacher Assignment", command=self.open_search_teacher_window)
             chooser.add_cascade(label="Manage User", menu=manage_menu) 
-
-        # Common menus for all roles
+            
         search_menu = Menu(chooser, tearoff=0)
         search_menu.add_command(label="Search Record", command=self.search_record)
         chooser.add_cascade(label="Search", menu=search_menu)
@@ -374,6 +384,7 @@ class School_Portal:
 
         about_menu = Menu(chooser, tearoff=0)
         about_menu.add_command(label="About", command=self.show_about)
+        about_menu.add_command(label="Set School Name", command=self.set_school_name)
         chooser.add_cascade(label="Help", menu=about_menu)
 
         password_menu = Menu(chooser, tearoff=0)
@@ -421,7 +432,6 @@ class School_Portal:
 
     
      #========================= Function Decorators =========================
-
      #======================= Role-based Access Control =========================
     def require_role(*roles):
         def decorator(func):
@@ -652,7 +662,7 @@ class School_Portal:
                 if value <= max_score:
                     return True
                 else:
-                    message = f" cannot exceed {max_score}"
+                    message = f" cannot exceed {max_score} marks"
                     if score_type:
                         message = f"{score_type} {message}"
                     self.show_message("Info",message, "info")
@@ -2121,7 +2131,7 @@ class School_Portal:
 
         # Header
         Label(scrollable_frame, 
-            text="JUABOSO SENIOR HIGH SCHOOL (JUASEC)", 
+            text=self.school_name, 
             font=('inter', 16, 'bold'), 
             bg="white").grid(row=0, column=0, columnspan=8, pady=10)
 
@@ -2131,7 +2141,7 @@ class School_Portal:
             bg="white").grid(row=1, column=0, columnspan=8, pady=5)
 
         # Column headers
-        headers = ["ID", "First Name", "Last Name", "Class Score", "Exam Score", "Total Score", "Grade"]
+        headers = ["ID", "First Name", "Last Name", "Class Score 30%", "Exam Score 70%", "Total Score 100%", "Grade"]
         for col, header in enumerate(headers):
             Label(scrollable_frame, 
                 text=header, 
@@ -2209,26 +2219,41 @@ class School_Portal:
 
 
     @db_error_handler
+    @db_error_handler
     def print_to_printer(self, records, selected_class, selected_subject):
-        """Send the records to selected printer"""
-        # Create a temporary file
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as temp:
-            temp_file_path = temp.name
-            temp.write("JUABOSO SENIOR HIGH SCHOOL (JUASEC)\n")
-            temp.write("=" * 80 + "\n")
-            temp.write(f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}\n")
-            temp.write("=" * 80 + "\n\n")
-            temp.write(f"{'ID':<5}{'First Name':<15}{'Last Name':<15}"
-                    f"{'Class Score':<12}{'Exam Score':<12}{'Total Score':<12}{'Grade':<15}\n")
+        """Generate a PDF and send it to the selected printer."""
+        # 1. Create a temporary PDF file
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_pdf:
+            temp_pdf_path = temp_pdf.name
 
-            for record in records:
-                temp.write(f"{str(record[0]):<5}{record[1]:<15}{record[2]:<15}"
-                        f"{str(record[3]):<12}{str(record[4]):<12}{str(record[5]):<12}{record[6]:<15}\n")
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("helvetica", "B", 14)
+        pdf.cell(0, 10, f"{self.school_name}", ln=True, align="C")
+        pdf.set_font("helvetica", "", 12)
+        pdf.cell(0, 10, f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}", ln=True, align="C")
+        pdf.ln(5)
 
-        # Prompt printer selection
+        # Table headers
+        pdf.set_font("helvetica", "B", 10)
+        headers = ["ID", "First Name", "Last Name", "Class Score 30%", "Exam Score 70%", "Total Score 100%", "Grade"]
+        col_widths = [15, 30, 30, 30, 30, 30, 30]
+        for i, header in enumerate(headers):
+            pdf.cell(col_widths[i], 8, header, border=1, align="C")
+        pdf.ln()
+
+        # Table data
+        pdf.set_font("helvetica", "", 10)
+        for record in records:
+            for i, value in enumerate(record):
+                pdf.cell(col_widths[i], 8, str(value), border=1, align="C")
+            pdf.ln()
+
+        pdf.output(temp_pdf_path)
+
+        # 2. Prompt for printer selection
         printer_name = win32print.GetDefaultPrinter()
         printers = [printer[2] for printer in win32print.EnumPrinters(2)]
-        
         selected = simpledialog.askstring("Select Printer", f"Available printers:\n\n" +
                                         "\n".join(printers) + "\n\nEnter printer name:",
                                         initialvalue=printer_name)
@@ -2236,11 +2261,11 @@ class School_Portal:
             self.show_message("Cancelled", "Printing cancelled or invalid printer name.", "warning")
             return
 
-        # Send to selected printer
+        # 3. Send the PDF to the selected printer
         win32api.ShellExecute(
             0,
             "printto",
-            temp_file_path,
+            temp_pdf_path,
             f'"{selected}"',
             ".",
             0
@@ -2262,15 +2287,15 @@ class School_Portal:
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("helvetica", "B", 14)
-        pdf.cell(0, 10, "JUABOSO SENIOR HIGH SCHOOL (JUASEC)", ln=True, align="C")
+        pdf.cell(0, 10, f"{self.school_name}", ln=True, align="C")
         pdf.set_font("helvetica", "", 12)
         pdf.cell(0, 10, f"Class: {selected_class}   Subject: {selected_subject}   Year: {self.selected_year}  Period: {self.selected_period}", ln=True, align="C")
         pdf.ln(5)
 
         # Table headers
         pdf.set_font("helvetica", "B", 10)
-        headers = ["ID", "First Name", "Last Name", "Class Score", "Exam Score", "Total Score", "Grade"]
-        col_widths = [15, 30, 30, 25, 25, 25, 30]
+        headers = ["ID", "First Name", "Last Name", "Class Score 30%", "Exam Score 70%", "Total Score 100%", "Grade"]
+        col_widths = [15, 30, 30, 30, 30, 30, 30]
         for i, header in enumerate(headers):
             pdf.cell(col_widths[i], 8, header, border=1, align="C")
         pdf.ln()
@@ -2366,7 +2391,7 @@ class School_Portal:
 
             # Header
             Label(scrollable_frame, 
-                text="JUABOSO SENIOR HIGH SCHOOL (JUASEC)",
+                text=self.school_name,
                 font=('inter', 16, 'bold'),
                 bg="white").grid(row=0, column=0, columnspan=3, pady=10)
 
@@ -2581,44 +2606,62 @@ class School_Portal:
     def print_report_to_printer(self, records, firstname, lastname, selected_class):
         """Print student report to printer"""
         # Create a temporary file for printing
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as file:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as file:
             temp_file_path = file.name
             # Write header
-            file.write("\n")
-            file.write("JUABOSO SENIOR HIGH SCHOOL (JUASEC)\n")
-            file.write("=" * 80 + "\n")
-            file.write("STUDENT'S ACADEMIC PERFORMANCE REPORT\n")
-            file.write("=" * 80 + "\n\n")
+            # Create PDF document
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
 
-            # Write student details
-            file.write(f"Student Name: {firstname} {lastname}\n")
-            file.write(f"Class: {selected_class}\n")
-            file.write("-" * 80 + "\n\n")
+        # Header
+        pdf.set_font("helvetica", "B", 16)
+        pdf.cell(0, 10, f"{self.school_name}", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(0, 10, "STUDENT'S ACADEMIC PERFORMANCE REPORT", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(10)
 
-            # Write column headers
-            file.write(f"{'Subject':<30}{'Total Score':<15}{'Grade & Remarks':<20}{'Position':<20}\n")
-            file.write("-" * 80 + "\n")
+        # Student details
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(0, 10, f"Student Name: {firstname} {lastname}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(0, 10, f"Class: {selected_class}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.ln(10)
 
-            # Write subject records
-            for record in records:
-                file.write(f"{record[2]:<30}{str(record[3]):<15}{record[4]:<20}{record[5]:<20}\n")
+        # Table headers
+        pdf.set_font("helvetica", "B", 11)
+        pdf.cell(50, 6, "Subject", border=1)
+        pdf.cell(40, 6, "Total Score", border=1)
+        pdf.cell(50, 6, "Grade & Remarks", border=1)
+        pdf.cell(30, 6, "Position", border=1, ln=True)
 
-            file.write("\n" + "=" * 80 + "\n\n")
+        # Table data
+        pdf.set_font("helvetica", "", 11)
+        for record in records:
+            pdf.cell(50, 6, str(record[2]), border=1)
+            pdf.cell(40, 6, str(record[3]), border=1)
+            pdf.cell(50, 6, str(record[4]), border=1)
+            pdf.cell(30, 6, str(record[5]), border=1, ln=True)
+                    
+        # Footer
+        pdf.ln(20)
+        pdf.set_font("helvetica", "", 11)
+        
+        # Update all footer cells with new positioning parameters
+        footer_items = [
+            "Form Master's Remarks: .............................",
+            "Form Master Name: .............................",
+            "Date: .............................",
+            "Signature: .............................",
+            " ",  # Spacing
+            "Headmaster Name: .............................",
+            "Date: .............................",
+            "Signature: ............................."
+        ]
 
-            # Add footer for signatures
-            file.write("Form Master's Remarks: .............................\n")
-            file.write("Form Master Name: .............................\n")
-            file.write("Date: .............................\n")
-            file.write("Signature: .............................\n")
+        for item in footer_items:
+            pdf.cell(0, 10, item, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
-            file.write("\n")
-
-            #Headmaster Signature
-            # Add footer for signatures
-            file.write("Headmaster Name: .............................\n")
-            file.write("Date: .............................\n")
-            file.write("Signature: .............................\n")
-
+        # Save PDF
+        pdf.output(temp_file_path)
 
     # Prompt printer selection
         printer_name = win32print.GetDefaultPrinter()
@@ -2636,7 +2679,7 @@ class School_Portal:
             0,
             "printto",
             temp_file_path,
-            f'"{selected}"',
+            f'"{selected}"',+
             ".",
             0
         )
@@ -2661,7 +2704,7 @@ class School_Portal:
 
         # Header
         pdf.set_font("helvetica", "B", 16)
-        pdf.cell(0, 10, "JUABOSO SENIOR HIGH SCHOOL (JUASEC)", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(0, 10, f"{self.school_name}", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.cell(0, 10, "STUDENT'S ACADEMIC PERFORMANCE REPORT", align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.ln(10)
 
@@ -2963,7 +3006,7 @@ class School_Portal:
     def assign_class_subject(self):
         """Open a window to assign classes and subjects to users (admin only)"""
         assign_window = Toplevel(self.root)
-        assign_window.title("Assign Classes and Subjects")
+        assign_window.title("Assign Classes and Subjects to Teachers")
         assign_window.geometry("450x600")
         assign_window.config(bg="#3B3B3B")
         assign_window.grab_set()
@@ -2972,7 +3015,7 @@ class School_Portal:
         self.center_window(assign_window)
 
         # User Selection
-        Label(assign_window, text="Select User (Username):", font=("inter", 12), fg="white", bg="#3B3B3B").grid(
+        Label(assign_window, text="Select Teacher (Username):", font=("inter", 12), fg="white", bg="#3B3B3B").grid(
             row=0, column=0, padx=10, pady=10, sticky=W)
         user_combobox = ttk.Combobox(assign_window, width=27, state="readonly")
         user_combobox.grid(row=0, column=1, padx=10, pady=10)
@@ -3013,11 +3056,7 @@ class School_Portal:
         Label(assign_window, text="Assign Classes:", font=("inter", 12), fg="white", bg="#3B3B3B").grid(
             row=3, column=0, padx=10, pady=10, sticky=W)
 
-        class_list = ['1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D', '2Arts1', '2Arts2A', '2Arts2B', '2Arts2C',
-                    '2Arts2D', '3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B', '1Agric1', '1Agric2',
-                    '2Agric1', '2Agric2', '3Agric1', '3Agric2', '1Bus', '2Bus', '3Bus', '1H/E1', '1H/E2', '2H/E1', '2H/E2',
-                    '3H/E1', '3H/E2', '1Sci1', '1Sci2', '2Sci1', '2Sci2', '3Sci1', '3Sci2', '1V/A', '2V/A', '3V/A']
-
+        class_list = [row[0] for row in self.run_query("SELECT name FROM classes ORDER BY name").fetchall()]
         selected_classes = {}  # Dictionary to store the state of each checkbox
         for i, class_name in enumerate(class_list):
             var = IntVar()
@@ -3047,14 +3086,11 @@ class School_Portal:
         Label(assign_window, text="Assign Subject:", font=("inter", 12), fg="white", bg="#3B3B3B").grid(
             row=6 + len(class_list) // 3, column=0, padx=10, pady=10, sticky=W)
         
-        subject_list = ['Acounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.', 'Chemistry', 'Costing', 'Crop Husb.',
-                        'CRS', 'English', 'Economics', 'Elective Maths.', 'Foods & Nut.', 'French', 'General Agric',
-                        'Geography', 'Government', 'GKA', 'Graphic Design', 'Integrated Sci.', 'Leather Work',
-                        'Mathematics', 'Mgmt-in-Living', 'Physics', 'Social Studies', 'Twi']
-        
+        subject_list = [row[0] for row in self.run_query("SELECT name FROM subjects ORDER BY name").fetchall()]
         subject_combobox = ttk.Combobox(assign_window, width=27, state="readonly")
         subject_combobox['values'] = subject_list
         subject_combobox.grid(row=6 + len(class_list) // 3, column=1, padx=10, pady=10)
+        subject_combobox.set("Select Subject")
 
         # Assign Button
         Button(
@@ -3370,7 +3406,116 @@ class School_Portal:
         except Exception as e:
             self.show_message("Error", f"Could not delete assignment: {e}", "error")
 
+   
 
+
+    @require_role("admin")
+    def manage_classes_subjects(self):
+        win = Toplevel(self.root)
+        win.title("Manage Classes & Subjects")
+        win.geometry("650x300")
+        win.config(bg="#3B3B3B")
+        self.center_window(win)
+        win.grab_set()
+
+         # --- Classes Section ---
+        Label(win, text="Classes", bg="#3B3B3B", fg="white", font=("inter", 12, "bold")).grid(row=0, column=0, padx=10, pady=10)
+        class_frame = Frame(win)
+        class_frame.grid(row=1, column=0, rowspan=4, padx=10, pady=5, sticky="ns")
+        class_listbox = Listbox(class_frame, width=25)
+        class_listbox.pack(side=LEFT, fill=Y)
+        class_scroll = Scrollbar(class_frame, orient=VERTICAL, command=class_listbox.yview)
+        class_scroll.pack(side=RIGHT, fill=Y)
+        class_listbox.config(yscrollcommand=class_scroll.set)
+
+        class_entry = Entry(win, width=20)
+        class_entry.grid(row=1, column=1, padx=5)
+        Button(win, text="Add", command=lambda: add_class(), bg="green", fg="white").grid(row=2, column=1)
+        Button(win, text="Edit", command=lambda: edit_class(), bg="blue", fg="white").grid(row=3, column=1)
+        Button(win, text="Delete", command=lambda: delete_class(), bg="red", fg="white").grid(row=4, column=1)
+
+        # --- Subjects Section ---
+        Label(win, text="Subjects", bg="#3B3B3B", fg="white", font=("inter", 12, "bold")).grid(row=0, column=2, padx=10, pady=10)
+        subject_frame = Frame(win)
+        subject_frame.grid(row=1, column=2, rowspan=4, padx=10, pady=5, sticky="ns")
+        subject_listbox = Listbox(subject_frame, width=25)
+        subject_listbox.pack(side=LEFT, fill=Y)
+        subject_scroll = Scrollbar(subject_frame, orient=VERTICAL, command=subject_listbox.yview)
+        subject_scroll.pack(side=RIGHT, fill=Y)
+        subject_listbox.config(yscrollcommand=subject_scroll.set)
+
+        subject_entry = Entry(win, width=20)
+        subject_entry.grid(row=1, column=3, padx=5)
+        Button(win, text="Add", command=lambda: add_subject(), bg="green", fg="white").grid(row=2, column=3)
+        Button(win, text="Edit", command=lambda: edit_subject(), bg="blue", fg="white").grid(row=3, column=3)
+        Button(win, text="Delete", command=lambda: delete_subject(), bg="red", fg="white").grid(row=4, column=3)
+        
+        # --- Helper functions ---
+        def refresh_lists():
+            class_listbox.delete(0, END)
+            for row in self.run_query("SELECT name FROM classes ORDER BY name").fetchall():
+                class_listbox.insert(END, row[0])
+            subject_listbox.delete(0, END)
+            for row in self.run_query("SELECT name FROM subjects ORDER BY name").fetchall():
+                subject_listbox.insert(END, row[0])
+
+        def add_class():
+            name = class_entry.get().strip()
+            if name:
+                try:
+                    self.run_query("INSERT INTO classes (name) VALUES (?)", (name,))
+                    refresh_lists()
+                    self.show_message("Success", "Class added.", "success")
+                except sqlite3.IntegrityError:
+                    self.show_message("Error", "Class already exists.", "error")
+
+        def edit_class():
+            selected = class_listbox.curselection()
+            if selected:
+                old_name = class_listbox.get(selected[0])
+                new_name = class_entry.get().strip()
+                if new_name:
+                    self.run_query("UPDATE classes SET name=? WHERE name=?", (new_name, old_name))
+                    refresh_lists()
+                    self.show_message("Success", "Class updated.", "success")
+
+        def delete_class():
+            selected = class_listbox.curselection()
+            if selected:
+                name = class_listbox.get(selected[0])
+                self.run_query("DELETE FROM classes WHERE name=?", (name,))
+                refresh_lists()
+                self.show_message("Success", "Class deleted.", "success")
+
+        def add_subject():
+            name = subject_entry.get().strip()
+            if name:
+                try:
+                    self.run_query("INSERT INTO subjects (name) VALUES (?)", (name,))
+                    refresh_lists()
+                    self.show_message("Success", "Subject added.", "success")
+                except sqlite3.IntegrityError:
+                    self.show_message("Error", "Subject already exists.", "error")
+
+        def edit_subject():
+            selected = subject_listbox.curselection()
+            if selected:
+                old_name = subject_listbox.get(selected[0])
+                new_name = subject_entry.get().strip()
+                if new_name:
+                    self.run_query("UPDATE subjects SET name=? WHERE name=?", (new_name, old_name))
+                    refresh_lists()
+                    self.show_message("Success", "Subject updated.", "success")
+
+        def delete_subject():
+            selected = subject_listbox.curselection()
+            if selected:
+                name = subject_listbox.get(selected[0])
+                self.run_query("DELETE FROM subjects WHERE name=?", (name,))
+                refresh_lists()
+                self.show_message("Success", "Subject deleted.", "success")
+
+        refresh_lists()
 
 #================================================== Login window ==============================================
 
@@ -3764,17 +3909,8 @@ class School_Portal:
     def populate_class_subject_comboboxes(self, class_cb, subject_cb):
         """Populate class and subject comboboxes based on user role/assignments."""
         if self.current_user_role == "admin":
-            class_list = [
-                '1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D', '2Arts1', '2Arts2A', '2Arts2B', '2Arts2C',
-                '2Arts2D', '3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B', '1Agric1', '1Agric2',
-                '2Agric1', '2Agric2', '3Agric1', '3Agric2', '1Bus', '2Bus', '3Bus', '1H/E1', '1H/E2', '2H/E1', '2H/E2',
-                '3H/E1', '3H/E2', '1Sci1', '1Sci2', '2Sci1', '2Sci2', '3Sci1', '3Sci2', '1V/A', '2V/A', '3V/A'
-            ]
-            subject_list = [
-                'Acounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.', 'Chemistry', 'Costing', 'Crop Husb.', 'CRS', 'English',
-                'Economics', 'Elective Maths.', 'Foods & Nut.', 'French', 'General Agric', 'Geography', 'Government', 'GKA',
-                'Graphic Design', 'Integrated Sci.', 'Leather Work', 'Mathematics', 'Mgmt-in-Living', 'Physics', 'Social Studies', 'Twi'
-            ]
+            class_list = [row[0] for row in self.run_query("SELECT name FROM classes ORDER BY name").fetchall()]
+            subject_list = [row[0] for row in self.run_query("SELECT name FROM subjects ORDER BY name").fetchall()]
         elif self.current_user_role == "user":
             assigned_classes = list(set(assignment[0] for assignment in self.user_assignments))
             assigned_subjects = list(set(assignment[1] for assignment in self.user_assignments))
@@ -3860,7 +3996,24 @@ class School_Portal:
         """
         self.run_query(query, ())
 
+    def create_classes_table(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS classes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )
+        """
+        self.run_query(query)
 
+    def create_subjects_table(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS subjects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL
+        )
+        """
+        self.run_query(query) 
+    
     # ================================== Add records to academic table  ==================================================
     def add_academic_record_window(self):
         window = Toplevel(self.root)

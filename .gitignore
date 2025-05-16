@@ -1,3 +1,9 @@
+#files --------- .txt, .db, .ico, .spec
 version.txt
 schoolDB.db
-app3.ico
+app.ico
+AcaDash.spec
+
+#folders
+build
+dist
