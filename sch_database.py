@@ -307,10 +307,23 @@ class School_Portal:
 
     #======================= Set School Name ==============================
     def set_school_name(self):
-        from tkinter.simpledialog import askstring
-        name = askstring("School Name", "Enter the name of your school:", initialvalue=self.school_name)
-        if name:
-            self.school_name = name
+        def save_and_close():
+            name = entry.get().strip()
+            if name:
+                self.school_name = name
+            dialog.destroy()
+
+        dialog = Toplevel(self.root)
+        dialog.title("School Name")
+        dialog.geometry("500x120")  # Set width here
+        dialog.grab_set()
+        Label(dialog, text="Enter the name of your school:", font=("inter", 12)).pack(pady=10)
+        entry = Entry(dialog, width=60, font=("inter", 12))
+        entry.pack(padx=20)
+        entry.insert(0, self.school_name)
+        Button(dialog, text="Save", command=save_and_close, bg="green", fg="white").pack(pady=10)
+        entry.focus_set()
+        dialog.wait_window()
 
     #============================= Menu Function ==========================
     def create_menu_bar(self):
@@ -324,9 +337,7 @@ class School_Portal:
 
         # Role-specific file menu items
         if self.current_user_role == "admin":
-            file_menu.add_command(label="Delete Record", command=self.dele)
-            file_menu.add_command(label="Delete All Records", command=self.delete_all_records)
-            file_menu.add_separator()
+            file_menu.add_command(label="Print Report", command=self.print_report)
         elif self.current_user_role == "user":
             file_menu.add_command(label="Add Record", command=self.add_record_window)
             file_menu.add_command(label="Add from CSV", command=self.import_csv_data)
@@ -335,13 +346,14 @@ class School_Portal:
             file_menu.add_command(label="Export as CSV", command=self.export_csv_window)
         
             
-        # Common file menu items
-        file_menu.add_command(label="Export as Excel", command=self.export_data)
-        file_menu.add_separator()
-        file_menu.add_command(label="View Records", command=self.show_records_window)
-        file_menu.add_command(label="Print Records", command=self.print_data)   
+        # Common file menu items 
+        file_menu.add_command(label="Export as Excel", command=self.export_data) 
+        file_menu.add_command(label="Print Records", command=self.print_data) 
+        file_menu.add_command(label="View Records", command=self.show_records_window) 
         if self.current_user_role == "admin":
-            file_menu.add_command(label="Print Report", command=self.print_report)
+            file_menu.add_separator()
+            file_menu.add_command(label="Delete Record", command=self.dele)
+            file_menu.add_command(label="Delete All Records", command=self.delete_all_records)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.ex)
         
@@ -358,19 +370,18 @@ class School_Portal:
             manage_menu = Menu(chooser, tearoff=0)
             manage_menu.add_command(label="Add New User", command=self.sign_up)
             manage_menu.add_separator()
-            manage_menu.add_command(label="Manage Classes & Subjects", command=self.manage_classes_subjects)
             manage_menu.add_command(label="Assign Classes & Subjects", command=self.assign_class_subject)
-            manage_menu.add_command(label="Delete Assignment", command=self.open_delete_assignment_window)
-            manage_menu.add_separator()
             manage_menu.add_command(label="Find Teacher Assignment", command=self.open_search_teacher_window)
-            chooser.add_cascade(label="Manage User", menu=manage_menu) 
-            
+            manage_menu.add_separator()
+            manage_menu.add_command(label="Manage Classes & Subjects", command=self.manage_classes_subjects)
+            manage_menu.add_separator()
+            manage_menu.add_command(label="Set School Name", command=self.set_school_name)
+            manage_menu.add_separator()
+            manage_menu.add_command(label="Delete Assignment", command=self.open_delete_assignment_window)
+            chooser.add_cascade(label="Admin tools ", menu=manage_menu)     
         search_menu = Menu(chooser, tearoff=0)
         search_menu.add_command(label="Search Record", command=self.search_record)
         chooser.add_cascade(label="Search", menu=search_menu)
-        
-       
-        #student_records_menu.add_command(label="Edit Year/Period", command=self.open_edit_year_period_window)
         
         # Add Stats Menu
         stats_menu = Menu(chooser, tearoff=0)
@@ -384,7 +395,6 @@ class School_Portal:
 
         about_menu = Menu(chooser, tearoff=0)
         about_menu.add_command(label="About", command=self.show_about)
-        about_menu.add_command(label="Set School Name", command=self.set_school_name)
         chooser.add_cascade(label="Help", menu=about_menu)
 
         password_menu = Menu(chooser, tearoff=0)
@@ -2025,9 +2035,9 @@ class School_Portal:
         # Convert to pandas DataFrame
         df = pd.DataFrame(result, columns=['Class Score', 'Exam Score', 'Total Score', 'Gender'])
 
-        # Calculate descriptive statistics
+        # Center the stats_frame in the window
         stats_frame = Frame(stats_window, bg="lavender", bd=2, relief=RIDGE)
-        stats_frame.pack(fill=X, padx=10, pady=10)
+        stats_frame.pack(fill=None, expand=True,  padx=10, pady=10, anchor=CENTER)
 
         stats_label = Label(
             stats_frame,
@@ -2037,22 +2047,36 @@ class School_Portal:
             fg="white",
             pady=5
         )
-        stats_label.pack(fill=X)
+        stats_label.pack(fill=X, pady=(0,10))
 
-        # Create statistics table
-        stats_text = Text(stats_frame, height=8, width=80, font=("Courier", 10))
-        stats_text.pack(padx=10, pady=5)
+        # --- Make the stats_text scrollable ---
+        stats_text_frame = Frame(stats_frame, bg="lavender")
+        stats_text_frame.pack(fill=BOTH, expand=True, padx=0, pady=0)
+
+        stats_scrollbar = Scrollbar(stats_text_frame, orient=VERTICAL)
+        stats_scrollbar.pack(side=RIGHT, fill=Y)
+
+        stats_text = Text(
+            stats_text_frame,
+            height=8,
+            width=80,
+            font=("Courier", 12),
+            yscrollcommand=stats_scrollbar.set,
+            wrap=NONE
+        )
+        stats_text.pack(side=LEFT, fill=BOTH, expand=True, padx=0, pady=0,anchor=CENTER)
+        stats_scrollbar.config(command=stats_text.yview)
 
         # Calculate and display statistics
         for column in ['Class Score', 'Exam Score', 'Total Score']:
             stats = df[column].describe()
-            stats_text.insert(END, f"\n{column:^30}\n")
-            stats_text.insert(END, "-" * 30 + "\n")
-            stats_text.insert(END, f"Mean     : {stats['mean']:>8.2f}\n")
-            stats_text.insert(END, f"Std Dev  : {stats['std']:>8.2f}\n")
-            stats_text.insert(END, f"Minimum  : {stats['min']:>8.2f}\n")
-            stats_text.insert(END, f"Maximum  : {stats['max']:>8.2f}\n")
-            stats_text.insert(END, "\n")
+            stats_text.insert(END,f"\n{column:^30}\n")
+            stats_text.insert(END,f"{'-'*30}\n")
+            stats_text.insert(END,f"    {'Mean'}    :{stats['mean']:>8.2f}\n")
+            stats_text.insert(END,f"    {'Std Dev'} :{stats['std']:>8.2f}\n")
+            stats_text.insert(END,f"    {'Minimum'} :{stats['min']:>8.2f}\n")
+            stats_text.insert(END,f"    {'Maximum'} :{stats['max']:>8.2f}\n")
+            stats_text.insert(END,"\n")
 
         stats_text.config(state=DISABLED)
 
