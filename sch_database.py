@@ -322,13 +322,13 @@ class School_Portal:
             file_menu.add_command(label="Add from CSV", command=self.import_csv_data)
             file_menu.add_command(label="Edit Record", command=self.edit)
             file_menu.add_separator()
-            file_menu.add_command(label="Save as PDF", command=self.show_records_window)
             file_menu.add_command(label="Export as CSV", command=self.export_csv_window)
         
             
         # Common file menu items
         file_menu.add_command(label="Export as Excel", command=self.export_data)
         file_menu.add_separator()
+        file_menu.add_command(label="Show records", command=self.show_records_window)
         file_menu.add_command(label="Print Records", command=self.print_data)   
         if self.current_user_role == "admin":
             file_menu.add_command(label="Print Report", command=self.print_report)
@@ -553,16 +553,6 @@ class School_Portal:
         add_window.grab_set()  # Make the new window modal
         
 
-            
-        class_list = ['1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D', '2Arts1', '2Arts2A', '2Arts2B', '2Arts2C', 
-                                    '2Arts2D', '3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B','1Agric1', '1Agric2', 
-                                    '2Agric1', '2Agric2', '3Agric1', '3Agric2','1Bus', '2Bus', '3Bus','1H/E1', '1H/E2', '2H/E1','2H/E2',
-                                    '3H/E1', '3H/E2', '1Sci1', '1Sci2', '2Sci1', '2Sci2', '3Sci1', '3Sci2',  '1V/A', '2V/A', '3V/A' ]
-
-        subject_list = ['Acounting','Animal Husb.','Biology','Bus. Mgmt.','Chemistry','Costing','Crop Husb.','CRS','English', 
-                        'Economics', 'Elective Maths.','Foods & Nut.', 'French','General Agric', 'Geography', 'Government','GKA',
-                        'Graphic Design','Integrated Sci.', 'Leather Work','Mathematics','Mgmt-in-Living','Physics','Social Studies','Twi']
-
         # Add form fields
         Label(add_window, text="First Name:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=0, column=0, padx=10, pady=5, sticky=W)
         firstname_entry = Entry(add_window, width=30)
@@ -576,22 +566,24 @@ class School_Portal:
         gender_combobox = ttk.Combobox(add_window, width=27, state="readonly")
         gender_combobox['values'] = ('F', 'M')
         gender_combobox.grid(row=2, column=1, padx=10, pady=5)
+        gender_combobox.set("Choose Gender")
 
         Label(add_window, text="Form:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=3, column=0, padx=10, pady=5, sticky=W)
         form_combobox = ttk.Combobox(add_window, width=27, state="readonly")
         form_combobox['values'] = (1, 2, 3)
         form_combobox.grid(row=3, column=1, padx=10, pady=5)
+        form_combobox.set("Choose Form")
 
         Label(add_window, text="Class:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=4, column=0, padx=10, pady=5, sticky=W)
         class_combobox = ttk.Combobox(add_window, width=27, state="readonly")
-        class_combobox['values'] = class_list
         class_combobox.grid(row=4, column=1, padx=10, pady=5)
 
         Label(add_window, text="Subject:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=5, column=0, padx=10, pady=5, sticky=W)
         subject_combobox = ttk.Combobox(add_window, width=27, state="readonly")
-        subject_combobox['values'] = subject_list
         subject_combobox.grid(row=5, column=1, padx=10, pady=5)
         
+        #Populate the comboboxes with values base on user role
+        self.populate_class_subject_comboboxes(class_combobox, subject_combobox)
         # In add_record_window method:
         vcd = (self.root.register(lambda x: self.validate_score(x, 30, "Class Score")), '%P')
         Label(add_window, text="Class Score (30%):", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=6, column=0, padx=10, pady=5, sticky=W)
@@ -610,7 +602,7 @@ class School_Portal:
 
         periods_list =["Sem1", "Sem2", "Term1", "Term2", "Term3"]
         Label(add_window, text="Period:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=9, column=0, padx=10, pady=5, sticky=W)
-        period_cbox = ttk.Combobox(add_window, values=periods_list, width=27, state="randonly")
+        period_cbox = ttk.Combobox(add_window, values=periods_list, width=27, state="readonly")
         period_cbox.grid(row=9, column=1, padx=10, pady=5)
         period_cbox.set("E.g. Sem1 or Term 1")
 
@@ -1243,23 +1235,6 @@ class School_Portal:
         self.center_window(export_win)
         export_win.grab_set()
 
-        # Class filter
-        class_list = [
-            '1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D', '2Arts1', '2Arts2A', '2Arts2B',
-            '2Arts2C', '2Arts2D','3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B',
-            '1Agric1', '1Agric2', '2Agric1', '2Agric2', '3Agric1', '3Agric2', '1Bus', '2Bus', '3Bus',
-            '1H/E1', '1H/E2', '2H/E1', '2H/E2', '3H/E1', '3H/E2', '1Sci1', '1Sci2', '2Sci1', '2Sci2', 
-            '3Sci1', '3Sci2', '1V/A', '2V/A', '3V/A'
-        ]
-        
-        # Subject filter
-        subj_list = [
-            'Acounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.', 'Chemistry', 'Costing', 'Crop Husb.',
-            'CRS', 'English','Economics', 'Elective Maths.', 'Foods & Nut.', 'French', 'General Agric', 
-            'Geography', 'Government', 'GKA', 'Graphic Design', 'Integrated Sci.', 'Leather Work', 
-            'Mathematics', 'Mgmt-in-Living', 'Physics', 'Social Studies', 'Twi'
-        ]
-
         row_frame = Frame(export_win, bg="#2E2E2E")
         row_frame.grid(row=0, column=0, columnspan=6, pady=10)
 
@@ -1267,17 +1242,20 @@ class School_Portal:
         class_frame = Frame(row_frame, bg="#2E2E2E")
         class_frame.pack(side=LEFT, padx=10)
         Label(class_frame, text="Class:", bg="#2E2E2E", fg="white").pack(side=LEFT)
-        class_cb = ttk.Combobox(class_frame, values=class_list, width=12, state="readonly")
+        class_cb = ttk.Combobox(class_frame, width=12, state="readonly")
         class_cb.pack(side=LEFT)
-        class_cb.set("Select")
+    
 
         # --- Subject ---
         subject_frame = Frame(row_frame, bg="#2E2E2E")
         subject_frame.pack(side=LEFT, padx=10)
         Label(subject_frame, text="Subject:", bg="#2E2E2E", fg="white").pack(side=LEFT)
-        subject_cb = ttk.Combobox(subject_frame, values=subj_list, width=15, state="readonly")
+        subject_cb = ttk.Combobox(subject_frame, width=15, state="readonly")
         subject_cb.pack(side=LEFT)
-        subject_cb.set("Select")
+    
+
+        # Populate class and subject comboboxes base on user role
+        self.populate_class_subject_comboboxes(class_cb, subject_cb)
 
          # --- Fetch Function ---
         
@@ -1424,6 +1402,9 @@ class School_Portal:
         )
         self.subject_combobox.pack(side=LEFT, padx=(0,15))
         self.subject_combobox.set("Choose Subject")
+
+        # Populate class and subject comboboxes based on user role
+        self.populate_class_subject_comboboxes(self.class_combobox, self.subject_combobox)
 
         # Bind events
         self.class_combobox.bind("<<ComboboxSelected>>", self.selector)
@@ -3762,7 +3743,7 @@ class School_Portal:
                 self.create_menu_bar() 
                 login_window.destroy()  # Close the login window
                 self.root.deiconify()
-                self.update_comboboxes() 
+                self.populate_class_subject_comboboxes(self.class_combobox, self.subject_combobox) 
                 self.show_message(
                     "Welcome",
                      f"Welcome, {username}! to AcaDash. \nVisualize, Track, and Manage Academic Performance your students effortlessly.", 
@@ -3780,28 +3761,36 @@ class School_Portal:
             
 
 #========================================Update combobox based on assignment=============================
-    def update_comboboxes(self):
-        """Update the class and subject comboboxes based on the user's role and assignments"""
+    def populate_class_subject_comboboxes(self, class_cb, subject_cb):
+        """Populate class and subject comboboxes based on user role/assignments."""
         if self.current_user_role == "admin":
-            # Admins have access to all classes and subjects
-            self.class_combobox['values'] = [
+            class_list = [
                 '1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D', '2Arts1', '2Arts2A', '2Arts2B', '2Arts2C',
                 '2Arts2D', '3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B', '1Agric1', '1Agric2',
                 '2Agric1', '2Agric2', '3Agric1', '3Agric2', '1Bus', '2Bus', '3Bus', '1H/E1', '1H/E2', '2H/E1', '2H/E2',
                 '3H/E1', '3H/E2', '1Sci1', '1Sci2', '2Sci1', '2Sci2', '3Sci1', '3Sci2', '1V/A', '2V/A', '3V/A'
             ]
-            self.subject_combobox['values'] = [
-                'Accounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.', 'Chemistry', 'Costing', 'Crop Husb.', 'CRS', 'English',
+            subject_list = [
+                'Acounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.', 'Chemistry', 'Costing', 'Crop Husb.', 'CRS', 'English',
                 'Economics', 'Elective Maths.', 'Foods & Nut.', 'French', 'General Agric', 'Geography', 'Government', 'GKA',
                 'Graphic Design', 'Integrated Sci.', 'Leather Work', 'Mathematics', 'Mgmt-in-Living', 'Physics', 'Social Studies', 'Twi'
             ]
         elif self.current_user_role == "user":
-            # Users only have access to their assigned classes and subjects
             assigned_classes = list(set(assignment[0] for assignment in self.user_assignments))
             assigned_subjects = list(set(assignment[1] for assignment in self.user_assignments))
-            self.class_combobox['values'] = assigned_classes
-            self.subject_combobox['values'] = assigned_subjects
-        
+            class_list = assigned_classes
+            subject_list = assigned_subjects
+        else:
+            class_list = []
+            subject_list = []
+
+        class_cb['values'] = class_list
+        subject_cb['values'] = subject_list
+        if class_list:
+            class_cb.set("Choose Class")
+        if subject_list:
+            subject_cb.set("Choose Subject")
+            
         
 
 
@@ -3988,20 +3977,6 @@ class School_Portal:
         self.center_window(win)
         win.grab_set()
 
-        # Class and Subject options
-        class_list = [
-            '1Arts1', '1Arts2A', '1Arts2B', '1Arts2C', '1Arts2D', '2Arts1', '2Arts2A', '2Arts2B', '2Arts2C', '2Arts2D',
-            '3Arts1', '3Arts2A', '3Arts2B', '3Arts2C', '3Arts3A', '3Arts3B', '1Agric1', '1Agric2', '2Agric1', '2Agric2',
-            '3Agric1', '3Agric2', '1Bus', '2Bus', '3Bus', '1H/E1', '1H/E2', '2H/E1', '2H/E2', '3H/E1', '3H/E2',
-            '1Sci1', '1Sci2', '2Sci1', '2Sci2', '3Sci1', '3Sci2', '1V/A', '2V/A', '3V/A'
-        ]
-
-        subj_list = [
-            'Acounting', 'Animal Husb.', 'Biology', 'Bus. Mgmt.', 'Chemistry', 'Costing', 'Crop Husb.', 'CRS', 'English',
-            'Economics', 'Elective Maths.', 'Foods & Nut.', 'French', 'General Agric', 'Geography', 'Government', 'GKA',
-            'Graphic Design', 'Integrated Sci.', 'Leather Work', 'Mathematics', 'Mgmt-in-Living', 'Physics', 'Social Studies', 'Twi'
-        ]
-
         row_frame = Frame(win, bg="#2E2E2E")
         row_frame.grid(row=0, column=0, columnspan=8, pady=10)
 
@@ -4009,17 +3984,21 @@ class School_Portal:
         class_frame = Frame(row_frame, bg="#2E2E2E")
         class_frame.pack(side=LEFT, padx=10)
         Label(class_frame, text="Class:", bg="#2E2E2E", fg="white").pack(side=LEFT)
-        class_cb = ttk.Combobox(class_frame, values=class_list, width=15, state="readonly")
+        class_cb = ttk.Combobox(class_frame, width=15, state="readonly")
         class_cb.pack(side=LEFT)
-        class_cb.set("Select")
+        
 
         # --- Subject ---
         subject_frame = Frame(row_frame, bg="#2E2E2E")
         subject_frame.pack(side=LEFT, padx=10)
         Label(subject_frame, text="Subject:", bg="#2E2E2E", fg="white").pack(side=LEFT)
-        subject_cb = ttk.Combobox(subject_frame, values=subj_list, width=15, state="readonly")
+        subject_cb = ttk.Combobox(subject_frame, width=15, state="readonly")
         subject_cb.pack(side=LEFT)
         subject_cb.set("Select")
+
+
+        # Populate class and subject comboboxes based on user role
+        self.populate_class_subject_comboboxes(class_cb, subject_cb)
 
         # --- Year ---
         year_frame = Frame(row_frame, bg="#2E2E2E")
