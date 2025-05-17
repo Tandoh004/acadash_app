@@ -177,12 +177,11 @@ class School_Portal:
         #self.create_assignment_table()
         self.create_classes_table()
         self.create_subjects_table()
-        self.create_selector_frame()
-        self.setup_main_filter_frame()
         
-        #School name entered here
-        self.school_name = "JUABOSO SENIOR HIGH SCHOOL (JUASEC)"  # Default value
-            # Set custom icon using embedded method
+        # Call setup_ui to initialize UI elements
+        self.setup_ui()
+        
+        # Set custom icon using embedded method
         try:
             icon = self.get_embedded_icon()
             if icon:
@@ -194,79 +193,6 @@ class School_Portal:
         # Create logo using canvas instead of image
         self.logo_canvas = self.create_logo_on_canvas()
 
-
-
-       #======================= Table Title ===========================     
-        self.label = Label(
-            text=" Student Academic Records Portal ",
-            bg='navy',
-            font=('poppins', 18, 'bold'),
-            fg='white',
-            relief=SUNKEN,  # Added border relief
-            bd=1,         # Added border width
-            pady=5        # Added vertical padding within the label
-        )
-        self.label.grid(row=7, column=0, columnspan=2, padx=10, pady=5, sticky=EW)
-
-        # Configure grid layout
-        self.configure_grid(root)
-    
-           
-
-        #======================= Table Display ========================
-        # Configure the Treeview style
-        style = ttk.Style()
-        style.configure("Treeview.Heading", foreground="dark blue", font=("inter", 10, "bold"))  # Set header text color and font
-        style.configure("Treeview", rowheight=20, font=("inter", 10))
-        style.map("Treeview", background=[("selected", "#3B3B3B")])
-
-        # Create the Treeview
-        self.tree = ttk.Treeview(
-            height=10,  # Minimum number of rows
-            columns=["", "", "", "", "", "", "", "", "", ""]
-        )
-        self.tree.grid(row=8, column=0, columnspan=2, padx=10, sticky=NSEW)  # Make treeview expandable
-
-        # Add scrollbars to Treeview
-        y_scrollbar = ttk.Scrollbar(orient=VERTICAL, command=self.tree.yview)
-        y_scrollbar.grid(row=8, column=3, sticky=NS)
-        self.tree.configure(yscrollcommand=y_scrollbar.set)
-
-
-        # Define the column headers and their widths
-        self.tree.heading("#0", text="ID")
-        self.tree.column("#0", width=50)
-
-        self.tree.heading("#1", text="First Name")
-        self.tree.column("#1", width=90)
-
-        self.tree.heading("#2", text="Last Name")
-        self.tree.column("#2", width=120)
-
-        self.tree.heading("#3", text="Gender")
-        self.tree.column("#3", width=60)
-
-        self.tree.heading("#4", text="Form")
-        self.tree.column("#4", width=40)
-
-        self.tree.heading("#5", text="Class")
-        self.tree.column("#5", width=60)
-
-        self.tree.heading("#6", text="Subject")
-        self.tree.column("#6", width=100)
-
-        self.tree.heading("#7", text="Class Score")
-        self.tree.column("#7", width=85, stretch=FALSE)
-
-        self.tree.heading("#8", text="Exam Score")
-        self.tree.column("#8", width=85, stretch=FALSE)
-
-        self.tree.heading("#9", text="Total Score")
-        self.tree.column("#9", width=80, stretch=FALSE)
-
-        self.tree.heading("#10", text="Grade & Remarks")
-        self.tree.column("#10", width=120, stretch=FALSE)
-                
 
 
         #======================= Time and Date ===========================
@@ -283,6 +209,36 @@ class School_Portal:
         self.lblInfo.grid(row=11, column=0, columnspan=2, sticky=N)
         tick()
 
+    
+    # ================================= Setup method===========================
+    def setup_ui(self):
+        """Setup all UI elements after database connection"""
+        # Configure grid
+        self.configure_grid(self.root)
+        
+        # Create main UI elements
+        self.create_menu_bar()
+        self.create_selector_frame()
+        self.setup_main_filter_frame()
+        self.digit_counter()
+        self.table_title()
+        self.display_table()
+        self.display_message()
+        #School name 
+        self.school_name = "JUABOSO SENIOR HIGH SCHOOL (JUASEC)"  # Default value
+
+        
+
+    def configure_grid(self, root):
+        """Configure the grid layout for the root window."""
+        # Configure rows and columns to be expandable
+        root.grid_rowconfigure(0, weight=1)
+        root.grid_columnconfigure(0, weight=1)
+        root.grid_columnconfigure(1, weight=1)
+        root.grid_columnconfigure(2, weight=1)
+
+
+    
 
 
         #======================= Digital Counter ===========================
@@ -292,15 +248,76 @@ class School_Portal:
         
         self.counter_value = 0 
 
-        self.digit_counter()
-    
     def digit_counter(self):
         self.counter_value += 1
         self.counter_label.config(text=str(self.counter_value))
         self.counter_label.after(60000, self.digit_counter)  # Update every 60 seconds
 
 
+       #======================= Table Title ===========================
+    def table_title(self):     
+        self.label = Label(
+            text=" Student Academic Records Portal ",
+            bg='navy',
+            font=('poppins', 18, 'bold'),
+            fg='white',
+            relief=SUNKEN,  # Added border relief
+            bd=1,         # Added border width
+            pady=5        # Added vertical padding within the label
+        )
+        self.label.grid(row=7, column=0, columnspan=2, padx=10, pady=5, sticky=EW)
+    
+
+        #======================= Table Display ========================
+    def display_table(self):
+        # Configure the Treeview style
+        style = ttk.Style()
+        style.configure("Treeview.Heading", foreground="dark blue", font=("inter", 12, "bold"))  # Set header text color and font
+        style.configure("Treeview", rowheight=22, font=("inter", 11))
+        style.map("Treeview", background=[("selected", "#3B3B3B")])
+
+        # Create the Treeview
+        self.tree = ttk.Treeview(
+            height=10,  # Minimum number of rows
+            columns=["", "", "", "", "", "", ""]
+        )
+        self.tree.grid(row=8, column=0, columnspan=2, padx=10, sticky=NSEW)  # Make treeview expandable
+
+        # Add scrollbars to Treeview
+        y_scrollbar = ttk.Scrollbar(orient=VERTICAL, command=self.tree.yview)
+        y_scrollbar.grid(row=8, column=3, sticky=NS)
+        self.tree.configure(yscrollcommand=y_scrollbar.set)
+
+
+        # Define the column headers and their widths
+        self.tree.heading("#0", text="ID")
+        self.tree.column("#0", width=60)
+
+        self.tree.heading("#1", text="First Name")
+        self.tree.column("#1", width=100)
+
+        self.tree.heading("#2", text="Last Name")
+        self.tree.column("#2", width=140)
+
+        self.tree.heading("#3", text="Gender")
+        self.tree.column("#3", width=70)
+
+        self.tree.heading("#4", text="Class Score")
+        self.tree.column("#4", width=100)
+
+        self.tree.heading("#5", text="Exam Score")
+        self.tree.column("#5", width=100)
+
+        self.tree.heading("#6", text="Total Score")
+        self.tree.column("#6", width=100)
+
+        self.tree.heading("#7", text="Grade & Remarks")
+        self.tree.column("#7", width=150)
+                
+        self.bind_treeview_copy()
+
     #======================= Message Display ========================
+    def display_message(self):  
         self.message = Label(text="", fg="orange red", bg= 'lavender', font=('inter', 10, 'bold', 'italic'))
         self.message.grid(row=3, column=1, sticky=SW)
      
@@ -347,7 +364,8 @@ class School_Portal:
         
             
         # Common file menu items 
-        file_menu.add_command(label="Export as Excel", command=self.export_data) 
+        file_menu.add_command(label="Export as Excel", command=self.export_data)
+        file_menu.add_separator() 
         file_menu.add_command(label="Print Records", command=self.print_data) 
         file_menu.add_command(label="View Records", command=self.show_records_window) 
         if self.current_user_role == "admin":
@@ -414,33 +432,7 @@ class School_Portal:
             conn.commit()
         return result
 
-    # ================================= Setup method===========================
-    def setup_ui(self):
-        """Setup all UI elements after database connection"""
-        # Configure grid
-        self.configure_grid(self.root)
-        
-        # Create main UI elements
-        self.create_title_label()
-        self.create_treeview()
-        self.create_time_display()
-        self.create_counter()
-        self.create_class_selector()
-        self.create_menu_bar()
-        self.create_message_display()
-        
-        # Load initial records
-        self.view_records()
-
-    def configure_grid(self, root):
-        """Configure the grid layout for the root window."""
-        # Configure rows and columns to be expandable
-        root.grid_rowconfigure(0, weight=1)
-        root.grid_columnconfigure(0, weight=1)
-        root.grid_columnconfigure(1, weight=1)
-        root.grid_columnconfigure(2, weight=1)
-
-    
+   
      #========================= Function Decorators =========================
      #======================= Role-based Access Control =========================
     def require_role(*roles):
@@ -470,12 +462,15 @@ class School_Portal:
             return func(self, *args, **kwargs)
         return wrapper
     
-    
+
   #======================================== View Records =========================================
     @clear_treeview
     def view_records(self):
         """View all records in the Treeview"""
-        query = "SELECT * FROM Students_records ORDER BY totalScore DESC"
+        query = """SELECT id, fname, lname, gender, classScore, examScore,  totalScore, grade
+                   FROM Students_records 
+                   ORDER BY totalScore DESC
+                """
         db_table = self.run_query(query)
         if db_table is None:  # Add this check
             return
@@ -1481,8 +1476,7 @@ class School_Portal:
         self.selected_period = period
 
         query = """
-            SELECT s.fname, s.lname, s.gender, s.form, s.class_, s.subject,
-                   s.classScore, s.examScore, s.totalScore, s.grade
+            SELECT a.student_id, s.fname, s.lname, s.gender,s.classScore, s.examScore, s.totalScore, s.grade
             FROM academic_records a
             JOIN students_records s ON s.id = a.student_id
             WHERE a.year = ? AND a.period = ? ORDER BY s.lname
@@ -1490,7 +1484,7 @@ class School_Portal:
         results = self.run_query(query, (year, period)).fetchall()
 
         for record in results:
-            self.tree.insert("", "end", values=record)
+            self.tree.insert("", "end", text=record[0], values=record[1:])
 
         if not results:
             self.show_message("Info", "No records found for selected year and period.", "info")
@@ -1517,8 +1511,7 @@ class School_Portal:
 
         # Base query
         query = """
-            SELECT a.student_id, s.fname, s.lname, s.gender, s.form, s.class_, s.subject,
-                    s.classScore, s.examScore, s.totalScore, s.grade
+            SELECT a.student_id, s.fname, s.lname, s.gender, s.classScore, s.examScore, s.totalScore, s.grade
             FROM academic_records a
             JOIN students_records s ON s.id = a.student_id
             WHERE a.year = ? AND a.period = ? AND s.class_ = ?
@@ -3547,7 +3540,7 @@ class School_Portal:
         """Display the login window with the logo and Remember Me option"""
         login_window = Toplevel(self.root)
         login_window.title("Login")
-        login_window.geometry("450x550")
+        login_window.geometry("600x600")
         login_window.resizable(False, False)
         login_window.config(bg="#3B3B3B")
 
@@ -3563,7 +3556,7 @@ class School_Portal:
             bd=2,
             relief=RIDGE
         )
-        logo_canvas.grid(row=0, column=0, columnspan=3, padx=120, pady=(20, 5))
+        logo_canvas.grid(row=0, column=0, columnspan=3, padx=200, pady=(20, 5))
         
         # Adjusted Y coordinate (move everything up)
         y_offset = -10  # negative value to move up
@@ -3592,12 +3585,12 @@ class School_Portal:
 
 
         # Username and Password Labels and Entry Fields
-        Label(login_window, text="Username:", font=("inter", 12),fg = "white", bg="#3B3B3B").grid(row=1, column=0, padx=(40, 10), pady=(20, 5), sticky=W)
-        username_entry = Entry(login_window, width=30)
+        Label(login_window, text="Username:", font=("inter", 12),fg = "white", bg="#3B3B3B").grid(row=1, column=0, padx=(40, 10), pady=(20, 5), sticky=E)
+        username_entry = Entry(login_window, width=25)
         username_entry.grid(row=1, column=1, padx=10, pady=(20,5), sticky=W)
 
-        Label(login_window, text="Password:", font=("inter", 12), fg = "white",bg="#3B3B3B").grid(row=2, column=0, padx=(40, 10), pady=(5, 5), sticky=W)
-        password_entry = Entry(login_window, width=30, show="*")
+        Label(login_window, text="Password:", font=("inter", 12), fg = "white",bg="#3B3B3B").grid(row=2, column=0, padx=(40, 10), pady=(5, 5), sticky=E)
+        password_entry = Entry(login_window, width=25, show="*")
         password_entry.grid(row=2, column=1, padx=10, pady=(5,5), sticky=W) 
 
         # Remember Me Checkbox
@@ -3608,7 +3601,7 @@ class School_Portal:
             variable=remember_me_var,
             fg="orange",
             bg="#3B3B3B",
-            font=("inter", 10),
+            font=("inter", 10, "italic"),
             selectcolor="lavender",
         )
         remember_me_checkbox.grid(row=3, column=1, sticky=W, pady=(5, 15))
@@ -3633,7 +3626,8 @@ class School_Portal:
             ),
             bg="green",
             fg="white",
-            font=("inter", 11, "bold")
+            font=("inter", 11, "bold"),
+            relief=FLAT
         ).grid(row=4, column=1, pady=20)
 
         # Exit Button
@@ -3643,8 +3637,9 @@ class School_Portal:
             command=lambda: self.exit_application(login_window),
             bg="red",
             fg="white",
-            font=("inter", 11, "bold")
-        ).grid(row=5, column=1, pady=5)
+            font=("inter", 11, "bold"),
+            relief=FLAT
+        ).grid(row=5, column=1, pady=5, sticky=E)
       
 
         # Forgot Password Button
@@ -3656,7 +3651,7 @@ class School_Portal:
             fg="white",
             font=("inter", 11, "bold"),
             relief=FLAT
-        ).grid(row=6, column=1, pady=10, sticky=W)
+        ).grid(row=5, column=1, pady=10)
    
      #===========================  Exit Application ============================
     def exit_application(self, login_window):
@@ -4346,7 +4341,58 @@ class School_Portal:
 
             self.show_message("Success", "Academic records updated successfully for previous students!", "success")
     
+   # ======================================== Copy Treeview to Clipboard =========================================
+    def copy_treeview_to_clipboard(self, event=None):
+        """Copy the entire Treeview display to clipboard as tab-separated text."""
+        # Get column headers
+        columns =["ID","First Name", "Last Name", "Gender", "Class Score" , "Exam Score", "Total Score", "Grade & Remrks"] 
+        headers = "\t".join(columns)
+        # Get all rows
+        rows = []
+        for item in self.tree.get_children():
+            values = self.tree.item(item)["values"]
+            row = [self.tree.item(item)["text"]] + list(values)
+            rows.append("\t".join(str(v) for v in row))
+        data = headers + "\n" + "\n".join(rows)
+        # Copy to clipboard
+        self.root.clipboard_clear()
+        self.root.clipboard_append(data)
+        self.show_message("Copied", "Treeview data copied to clipboard.", "info")
+
     
+    def copy_selected_row_to_clipboard(self, event=None):
+        """Copy the selected Treeview row to clipboard as tab-separated text."""
+        # Identify the row under the mouse and select it
+        if event:
+            row_id = self.tree.identify_row(event.y)
+            if row_id:
+                self.tree.selection_set(row_id)
+            else:
+                self.show_message("Info", "No row selected.", "info")
+                return
+        
+        # Get column headers
+        columns =["ID","First Name", "Last Name", "Gender", "Class Score" , "Exam Score", "Total Score", "Grade & Remrks"] 
+        headers = "\t".join(columns)
+        # Get selected row
+        values = self.tree.item(row_id)["values"]
+        row = [self.tree.item(row_id)["text"]] + list(values)
+        row_data = "\t".join(str(v) for v in row)
+        data = headers + "\n" + row_data
+
+        # Copy to clipboard
+        self.root.clipboard_clear()
+        self.root.clipboard_append(data)
+        self.show_message("Copied", "Selected row copied to clipboard.", "info")
+
+    def bind_treeview_copy(self):
+        """Bind double-click on Treeview to copy its content to clipboard."""
+        self.tree.bind("<Double-1>", self.copy_treeview_to_clipboard)
+        
+        """Bind right-click on Treeview to copy selected row to clipboard."""
+        self.tree.bind("<Button-3>", self.copy_selected_row_to_clipboard)  # Right-click
+        
+        
     #================================================ Main Function =========================================
 
 if __name__ == "__main__":
@@ -4356,9 +4402,9 @@ if __name__ == "__main__":
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     
-    # Calculate window size (85% of screen size)
-    window_width = min(int(screen_width * 0.85), 1600)
-    window_height = min(int(screen_height * 0.85), 800)
+    # Calculate window size (90% of screen size)
+    window_width = min(int(screen_width * 0.90), 1600)
+    window_height = min(int(screen_height * 0.90), 1000)
     
     # Calculate center position
     center_x = int((screen_width - window_width) / 2)
