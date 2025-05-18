@@ -50,7 +50,7 @@ class School_Portal:
             bd=2,
             relief=RIDGE
         )
-        canvas.grid(row=0, column=0, padx=60, pady=20, sticky=NW)
+        canvas.grid(row=1, column=0, padx=60, pady=20, sticky=NW)
 
         
         #adjust position upwards
@@ -193,22 +193,7 @@ class School_Portal:
         # Create logo using canvas instead of image
         self.logo_canvas = self.create_logo_on_canvas()
 
-
-
-        #======================= Time and Date ===========================
-
-        def tick():
-            d = datetime.datetime.now()
-            today = "{:%B %d, %Y}".format(d)
-
-            time2 = time.strftime('%I:%M:%S %p')
-            self.lblInfo.config(text= time2+'\t'+today)
-            self.lblInfo.after(200, tick)
-
-        self.lblInfo = Label(font=('roboto mono', 16, 'bold'),bg='lavender' ,fg='dark blue', bd=5, relief= SUNKEN)
-        self.lblInfo.grid(row=11, column=0, columnspan=2, sticky=N)
-        tick()
-
+   
     
     # ================================= Setup method===========================
     def setup_ui(self):
@@ -217,9 +202,11 @@ class School_Portal:
         self.configure_grid(self.root)
         
         # Create main UI elements
+        self.create_title_bar()
         self.create_menu_bar()
         self.create_selector_frame()
         self.setup_main_filter_frame()
+        self.time_date_frame()
         self.digit_counter()
         self.table_title()
         self.display_table()
@@ -239,13 +226,51 @@ class School_Portal:
 
 
     
+ #======================= Time and Date ===========================
+    def time_date_frame(self):
+        # Create a frame for the time/date label
+        footer_frame = Frame(self.root, bg="#2E2E2E", height=30)
+        footer_frame.grid(row=11, column=0, columnspan=4, sticky="sew", padx=10, pady=5)
+        footer_frame.grid_columnconfigure(0, weight=1)  # Left labe expands
+        footer_frame.grid_columnconfigure(1, weight=0)  
 
+        time_frame = Frame(footer_frame)
+        time_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=0)
+          # Configure columns for centering
+        time_frame.grid_columnconfigure(0, weight=1)
+        time_frame.grid_columnconfigure(1, weight=1)
+        time_frame.grid_columnconfigure(2, weight=1)
+
+        self.lblInfo = Label(
+            time_frame, 
+            font=('fira mono', 14, 'bold'),
+            bg="#2E2E2E", 
+            fg='white', 
+            bd=5, 
+            relief=SUNKEN
+            )
+        self.lblInfo.grid(row=0 , column = 0)
+        self.tick()
+
+        # Counter Label
+        self.counter_label = Label(
+            footer_frame,
+            font=("fira mono", 14, "bold"), 
+            fg="firebrick", bg="khaki", 
+            relief=SUNKEN,
+            borderwidth=5
+            )
+        self.counter_label.grid(row = 0 , column=3, sticky="E", padx=(0, 10))
+
+
+    def tick(self):
+        d = datetime.datetime.now()
+        today = "{:%B %d, %Y}".format(d)
+        time2 = time.strftime('%I:%M:%S %p')
+        self.lblInfo.config(text= time2+'\t'+today)
+        self.lblInfo.after(200, self.tick)
 
         #======================= Digital Counter ===========================
-        # Counter Label
-        self.counter_label = Label(font=("fira mono", 16), fg="firebrick", bg="khaki", borderwidth=5, relief=SUNKEN)
-        self.counter_label.grid(row=11, column=3, sticky=E) 
-        
         self.counter_value = 0 
 
     def digit_counter(self):
@@ -253,19 +278,54 @@ class School_Portal:
         self.counter_label.config(text=str(self.counter_value))
         self.counter_label.after(60000, self.digit_counter)  # Update every 60 seconds
 
+       #=======================Tittle Bar ==============================
+    def create_title_bar(self):
+        title_bar = Frame(self.root, bg="#1A1A40", height=35)
+        title_bar.grid(row=0, column=0, columnspan=4, padx=10, sticky="new")
+        title_bar.grid_propagate(False)
+
+        # Centered Title
+        title_label = Label(
+            title_bar, text="AcaDash - Academic Management Dashboard",
+            font=("inter", 14, "bold"), bg="#1A1A40", fg="white"
+        )
+        title_label.grid(row=0, column=1, padx=0, pady=0, sticky="nsew")
+
+        # Login Info (right)
+        self.login_info_label = Label(
+            title_bar,
+            text=f"Logged in as: {self.logged_in_username or 'Guest'} ({self.current_user_role or ''})",
+            font=("inter", 10), bg="#1A1A40", fg="white", anchor="e"
+        )
+        self.login_info_label.grid(row=0, column=3, padx=10, pady=0, sticky="e")
+
+       
+        title_bar.grid_columnconfigure(1, weight=1)  # Center the title
+
+
 
        #======================= Table Title ===========================
-    def table_title(self):     
-        self.label = Label(
-            text=" Student Academic Records Portal ",
+    def table_title(self):  
+        table_frame = Frame(self.root, bg="navy", height=30)
+        table_frame.grid(row=7, column=0, columnspan=2, padx=10, pady=5, sticky=EW)
+        table_frame.grid_propagate(False) 
+
+         # Configure columns for centering
+        table_frame.grid_columnconfigure(0, weight=1)
+        table_frame.grid_columnconfigure(1, weight=1)
+        table_frame.grid_columnconfigure(2, weight=1)
+
+
+        table_label = Label(
+            table_frame,
+            text="Academic Records Overview",
             bg='navy',
-            font=('poppins', 18, 'bold'),
+            font=('poppins', 14, 'bold'),
             fg='white',
-            relief=SUNKEN,  # Added border relief
-            bd=1,         # Added border width
-            pady=5        # Added vertical padding within the label
+            padx=0,     
+            pady=0       
         )
-        self.label.grid(row=7, column=0, columnspan=2, padx=10, pady=5, sticky=EW)
+        table_label.grid(row=0, column=1 ,padx=10, pady=0, sticky="nsew")
     
 
         #======================= Table Display ========================
@@ -318,7 +378,12 @@ class School_Portal:
 
     #======================= Message Display ========================
     def display_message(self):  
-        self.message = Label(text="", fg="orange red", bg= 'lavender', font=('inter', 10, 'bold', 'italic'))
+        self.message = Label(
+            text="", 
+            fg="orange red",
+            bg= 'lavender', 
+            font=('inter', 10, 'bold', 'italic')
+            )
         self.message.grid(row=3, column=1, sticky=SW)
      
 
@@ -507,7 +572,9 @@ class School_Portal:
     def delete_all_records(self):
         """Delete a single record (admin only)"""
                # Confirm the action with the user
-        confirm = messagebox.askquestion("Delete All Records", "Are you sure you want to delete all records? This action cannot be undone.")
+        confirm = messagebox.askquestion(
+            "Delete All Records",
+             "Are you sure you want to delete all records? This action cannot be undone.")
         if confirm == "yes":
             # SQL query to delete all records
             query = "DELETE FROM students_records"
@@ -530,23 +597,21 @@ class School_Portal:
         for item in self.tree.get_children():
             self.tree.delete(item)
 
-        # Clear any graphs
-        for widget in self.root.grid_slaves(column=2):  # Clear column 2 (graphs)
-            widget.destroy()
+        # Clear any graphs (only rows 1-10, column 2)
+        for widget in self.root.grid_slaves():
+            info = widget.grid_info()
+            row = int(info.get('row', -1))
+            col = int(info.get('column', -1))
+            # Only clear widgets in columns 1 or 2, rows 1-10 but skip row=4 ,column=1
+            if (col in [1, 2]) and (1 <= row <= 10) and not ((row == 3 and col == 1) or (row == 4 and col==1)): 
+                widget.destroy()
 
-        # Clear existing widgets
-        for widget in self.root.grid_slaves(row=0, column=1):
-            widget.destroy()
-        
         # Reset the message display
         self.message["text"] = ""
 
         # Reset percentage display if it exists
         if hasattr(self, 'percentage_label'):
             self.percentage_label.config(text="")
-
-        # Reset window size
-        self.adjust_window_size()
 
         # Display success message
         self.show_message("Success", "Application reset to home state.", "success")
@@ -1585,12 +1650,12 @@ class School_Portal:
         })
 
         # Clear existing graph
-        for widget in self.root.grid_slaves(row=0, column=2):
+        for widget in self.root.grid_slaves(row=1, column=2):
             widget.destroy()
 
         # Create frame for graph
         graph_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
-        graph_frame.grid(row=0, column=2, rowspan=5, padx=5, pady=5, sticky=NSEW)
+        graph_frame.grid(row=1, column=2, rowspan=5, padx=5, pady=5, sticky=NSEW)
         
         # Add title
         Label(graph_frame, 
@@ -1726,19 +1791,19 @@ class School_Portal:
         fig.gca().add_artist(center_circle)
 
         # Clear existing plot
-        for widget in self.root.grid_slaves(row=5, column=2):
+        for widget in self.root.grid_slaves(row=6, column=2):
             widget.destroy()
 
         # Create frame for the plot
         donut_frame = Frame(self.root, bg="white", bd=2, relief=RIDGE)
-        donut_frame.grid(row=5, column=2, rowspan=5, padx=5, sticky=NSEW)
+        donut_frame.grid(row=6, column=2, rowspan=5, padx=5, sticky=NSEW)
         self.root.grid_columnconfigure(2, weight=1)
         self.root.grid_rowconfigure(5, weight=1)
 
         # Embed plot in frame
         canvas = FigureCanvasTkAgg(fig, master=donut_frame)
         canvas.draw()
-        canvas.get_tk_widget().grid(row=5, column=0)
+        canvas.get_tk_widget().grid(row=6, column=0)
 
         self.adjust_window_size()
 
@@ -1759,7 +1824,7 @@ class School_Portal:
         
         # Ensure window doesn't exceed screen size
         window_width = min(required_width, screen_width * 0.9)
-        window_height = min(800, screen_height * 0.9)
+        window_height = min(1000, screen_height * 0.9)
         
         # Calculate center position
         center_x = int((screen_width - window_width) / 2)
@@ -1811,12 +1876,12 @@ class School_Portal:
             pass_percentage = fail_percentage = 0
 
         # Clear existing widgets
-        for widget in self.root.grid_slaves(row=0, column=1):
+        for widget in self.root.grid_slaves(row=1, column=1):
             widget.destroy()
 
         # Create frame for percentage display
         percentage_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
-        percentage_frame.grid(row=0, column=1, padx=0, pady=20, sticky=NW)
+        percentage_frame.grid(row=1, column=1, padx=0, pady=20, sticky=NW)
 
         # Title
         Label(percentage_frame,
@@ -1937,7 +2002,7 @@ class School_Portal:
             padx=10,
             relief=RIDGE
         )
-        self.grade_frame.grid(row=0, column=1, sticky=E, padx=10, pady=20)
+        self.grade_frame.grid(row=1, column=1, sticky=E, padx=10, pady=20)
 
         grade_label = Label(
             self.grade_frame,
@@ -3877,7 +3942,20 @@ class School_Portal:
         else:
             self.show_message("Success", "Password reset successfully!", "success")
             window.destroy()
+   
 
+
+    def get_teacher_name(self, username):
+        query = """
+            SELECT t.fname, t.lname
+            FROM teachers t
+            JOIN users u ON u.id = t.user_id
+            WHERE u.username = ?
+        """
+        result = self.run_query(query, (username,)).fetchone()
+        if result:
+            return result[0], result[1]
+        return None, None
    #======================================== Authenticate User =========================================
     def authenticate_user(self, username, password, login_window, remember_me):
         """Authenticate the user and store their role and assignments"""
@@ -3889,6 +3967,14 @@ class School_Portal:
             if result:
                 user_id, self.current_user_role = result  # Store the user? ID and role
                 self.logged_in_username = username  # Store the logged-in user? username
+
+                # Fetch teacher name if user is a teacher
+                fname, lname = self.get_teacher_name(username)
+                if fname and lname:
+                    display_name = f"{fname} {lname}"
+                else:
+                    display_name = username
+
 
                 # Save username if "Remember Me" is checked
                 if remember_me:
@@ -3904,6 +3990,12 @@ class School_Portal:
                 else:
                     self.user_assignments = None  # Admins have full access
                 
+                # Update the login info label
+                if hasattr(self, 'login_info_label'):
+                    self.login_info_label.config(
+                        text=f"Logged in as: {display_name} ({self.current_user_role})"
+                    )
+
                 self.create_menu_bar() 
                 login_window.destroy()  # Close the login window
                 self.root.deiconify()
