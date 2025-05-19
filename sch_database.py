@@ -32,7 +32,6 @@ from  pdf2docx import Converter
 
 
 
-
 #================================== School portal Class ===================================
 class School_Portal:
     #database connection to relative paths
@@ -206,7 +205,7 @@ class School_Portal:
         self.create_menu_bar()
         self.create_selector_frame()
         self.setup_main_filter_frame()
-        self.time_date_frame()
+        self.footer_frame()
         self.digit_counter()
         self.table_title()
         self.display_table()
@@ -227,12 +226,12 @@ class School_Portal:
 
     
  #======================= Time and Date ===========================
-    def time_date_frame(self):
+    def footer_frame(self):
         # Create a frame for the time/date label
         footer_frame = Frame(self.root, bg="#2E2E2E", height=30)
         footer_frame.grid(row=11, column=0, columnspan=4, sticky="sew", padx=10, pady=5)
         footer_frame.grid_columnconfigure(0, weight=1)  # Left labe expands
-        footer_frame.grid_columnconfigure(1, weight=0)  
+         
 
         time_frame = Frame(footer_frame)
         time_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=0)
@@ -252,15 +251,23 @@ class School_Portal:
         self.lblInfo.grid(row=0 , column = 0)
         self.tick()
 
+ #======================= Digital Counter ===========================
         # Counter Label
         self.counter_label = Label(
             footer_frame,
-            font=("fira mono", 14, "bold"), 
+            font=("fira mono", 14), 
             fg="firebrick", bg="khaki", 
             relief=SUNKEN,
             borderwidth=5
             )
         self.counter_label.grid(row = 0 , column=3, sticky="E", padx=(0, 10))
+
+        self.counter_value = 0 
+
+    def digit_counter(self):
+        self.counter_value += 1
+        self.counter_label.config(text=str(self.counter_value))
+        self.counter_label.after(60000, self.digit_counter)  # Update every 60 seconds
 
 
     def tick(self):
@@ -269,15 +276,7 @@ class School_Portal:
         time2 = time.strftime('%I:%M:%S %p')
         self.lblInfo.config(text= time2+'\t'+today)
         self.lblInfo.after(200, self.tick)
-
-        #======================= Digital Counter ===========================
-        self.counter_value = 0 
-
-    def digit_counter(self):
-        self.counter_value += 1
-        self.counter_label.config(text=str(self.counter_value))
-        self.counter_label.after(60000, self.digit_counter)  # Update every 60 seconds
-
+        
        #=======================Tittle Bar ==============================
     def create_title_bar(self):
         title_bar = Frame(self.root, bg="#1A1A40", height=35)
@@ -634,31 +633,31 @@ class School_Portal:
         
 
         # Add form fields
-        Label(add_window, text="First Name:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=0, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="First Name:", bg='#3B3B3B', fg='white', font=('inter', 10, 'bold')).grid(row=0, column=0, padx=10, pady=5, sticky=W)
         firstname_entry = Entry(add_window, width=30)
         firstname_entry.grid(row=0, column=1, padx=10, pady=5)
 
-        Label(add_window, text="Last Name:", bg='#3B3B3B', fg='lavender', font=(' inter', 10, 'bold')).grid(row=1, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="Last Name:", bg='#3B3B3B', fg='white', font=(' inter', 10, 'bold')).grid(row=1, column=0, padx=10, pady=5, sticky=W)
         lastname_entry = Entry(add_window, width=30)
         lastname_entry.grid(row=1, column=1, padx=10, pady=5)
 
-        Label(add_window, text="Gender:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=2, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="Gender:", bg='#3B3B3B', fg='white', font=('inter', 10, 'bold')).grid(row=2, column=0, padx=10, pady=5, sticky=W)
         gender_combobox = ttk.Combobox(add_window, width=27, state="readonly")
         gender_combobox['values'] = ('F', 'M')
         gender_combobox.grid(row=2, column=1, padx=10, pady=5)
         gender_combobox.set("Choose Gender")
 
-        Label(add_window, text="Form:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=3, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="Form:", bg='#3B3B3B', fg='white', font=('inter', 10, 'bold')).grid(row=3, column=0, padx=10, pady=5, sticky=W)
         form_combobox = ttk.Combobox(add_window, width=27, state="readonly")
         form_combobox['values'] = (1, 2, 3)
         form_combobox.grid(row=3, column=1, padx=10, pady=5)
         form_combobox.set("Choose Form")
 
-        Label(add_window, text="Class:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=4, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="Class:", bg='#3B3B3B', fg='white', font=('inter', 10, 'bold')).grid(row=4, column=0, padx=10, pady=5, sticky=W)
         class_combobox = ttk.Combobox(add_window, width=27, state="readonly")
         class_combobox.grid(row=4, column=1, padx=10, pady=5)
 
-        Label(add_window, text="Subject:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=5, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="Subject:", bg='#3B3B3B', fg='white', font=('inter', 10, 'bold')).grid(row=5, column=0, padx=10, pady=5, sticky=W)
         subject_combobox = ttk.Combobox(add_window, width=27, state="readonly")
         subject_combobox.grid(row=5, column=1, padx=10, pady=5)
         
@@ -666,22 +665,22 @@ class School_Portal:
         self.populate_class_subject_comboboxes(class_combobox, subject_combobox)
         # In add_record_window method:
         vcd = (self.root.register(lambda x: self.validate_score(x, 30, "Class Score")), '%P')
-        Label(add_window, text="Class Score (30%):", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=6, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="Class Score (30%):", bg='#3B3B3B', fg='white', font=('inter', 10, 'bold')).grid(row=6, column=0, padx=10, pady=5, sticky=W)
         class_score_entry = Entry(add_window, validate='key', validatecommand=vcd, width=30)
         class_score_entry.grid(row=6, column=1, padx=10, pady=5)
 
         vcd1 = (self.root.register(lambda x: self.validate_score(x, 70, "Exam Score")), '%P')
-        Label(add_window, text="Exam Score (70%):", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=7, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="Exam Score (70%):", bg='#3B3B3B', fg='white', font=('inter', 10, 'bold')).grid(row=7, column=0, padx=10, pady=5, sticky=W)
         exam_score_entry = Entry(add_window, validate='key', validatecommand=vcd1, width=30)
         exam_score_entry.grid(row=7, column=1, padx=10, pady=5)
 
-        Label(add_window, text="Academic Year:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=8, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="Academic Year:", bg='#3B3B3B', fg='white', font=('inter', 10, 'bold')).grid(row=8, column=0, padx=10, pady=5, sticky=W)
         year_entry = Entry(add_window, width=30)
         year_entry.insert(0, "E.g. 2024/2025")  # optional default
         year_entry.grid(row=8, column=1, padx=10, pady=5)
 
         periods_list =["Sem1", "Sem2", "Term1", "Term2", "Term3"]
-        Label(add_window, text="Period:", bg='#3B3B3B', fg='lavender', font=('inter', 10, 'bold')).grid(row=9, column=0, padx=10, pady=5, sticky=W)
+        Label(add_window, text="Period:", bg='#3B3B3B', fg='white', font=('inter', 10, 'bold')).grid(row=9, column=0, padx=10, pady=5, sticky=W)
         period_cbox = ttk.Combobox(add_window, values=periods_list, width=27, state="readonly")
         period_cbox.grid(row=9, column=1, padx=10, pady=5)
         period_cbox.set("E.g. Sem1 or Term 1")
@@ -847,18 +846,12 @@ class School_Portal:
             self.show_message("Info","Please select a record to edit", "info")
             
             return
-        # Get the selected record? values
-        selected_item = self.tree.selection()
-        if not selected_item:
-            raise IndexError("No record selected")
-        record_values = self.tree.item(selected_item)["values"]
-        record_id = self.tree.item(selected_item)["text"]  # Assuming ID is stored in the Treeview? text field
         
         # Open the edit window
         self.edit_wind = Toplevel()
         self.edit_wind.title("Edit Record")
-        self.edit_wind.geometry("350x400")
-        self.edit_wind.config(bg="lavender")
+        self.edit_wind.geometry("350x300")
+        self.edit_wind.config(bg='#3B3B3B')
         self.edit_wind.grab_set()
 
         # Field labels and entry fields
@@ -866,20 +859,17 @@ class School_Portal:
             ("First Name", record_values[0]),
             ("Last Name", record_values[1]),
             ("Gender", record_values[2]),
-            ("Form", record_values[3]),
-            ("Class", record_values[4]),
-            ("Subject", record_values[5]),
-            ("Class Score", record_values[6]),
-            ("Exam Score", record_values[7]),
-            ("Total Score", record_values[8]),
-            ("Grade", record_values[9]),
+            ("Class Score", record_values[3]),
+            ("Exam Score", record_values[4]),
+            ("Total Score", record_values[5]),
+            ("Grade", record_values[6]),
         ]
 
         # Store entry widgets for later retrieval
         self.edit_entries = {}
 
         for i, (label_text, value) in enumerate(fields):
-            Label(self.edit_wind, text=label_text + ":", font=("inter", 12), bg="lavender").grid(row=i, column=0, padx=10, pady=5, sticky=W)
+            Label(self.edit_wind, text=label_text + ":", font=("inter", 12), bg='#3B3B3B', fg='white',).grid(row=i, column=0, padx=10, pady=5, sticky=W)
             entry = Entry(self.edit_wind, width=30)
             entry.insert(0, value)  # Pre-fill with the current value
             entry.grid(row=i, column=1, padx=10, pady=5)
@@ -912,16 +902,13 @@ class School_Portal:
         # Update the database
         query = """
             UPDATE students_records 
-            SET fname=?, lname=?, gender=?, form=?, class_=?, subject=?, classScore=?, examScore=?, totalScore=?, grade=? 
+            SET fname=?, lname=?, gender=?, classScore=?, examScore=?, totalScore=?, grade=? 
             WHERE id=?
         """
         parameters = (
             updated_values["First Name"],
             updated_values["Last Name"],
             updated_values["Gender"],
-            updated_values["Form"],
-            updated_values["Class"],
-            updated_values["Subject"],
             updated_values["Class Score"],
             updated_values["Exam Score"],
             updated_values["Total Score"],
@@ -1824,7 +1811,7 @@ class School_Portal:
         
         # Ensure window doesn't exceed screen size
         window_width = min(required_width, screen_width * 0.9)
-        window_height = min(1000, screen_height * 0.9)
+        window_height = min(800, screen_height * 0.9)
         
         # Calculate center position
         center_x = int((screen_width - window_width) / 2)
@@ -3944,7 +3931,7 @@ class School_Portal:
             window.destroy()
    
 
-
+   # ========================= Retrieve tearcher name from database ===================================
     def get_teacher_name(self, username):
         query = """
             SELECT t.fname, t.lname
