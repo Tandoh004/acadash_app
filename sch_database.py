@@ -1520,10 +1520,10 @@ class School_Portal:
         self.period_cb.set("Choose")
         
 
-        Button(filter_frame, text="Show", font= ("inter", 10), bg="blue", fg="white", command=self.fetch_records).pack(side=LEFT, padx=5)
-        read_button = Button(filter_frame, text="Read Aloud",bg="green",fg="white",command=self.read_treeview)
+        Button(filter_frame, text="Show", bg="blue", fg="white", relief=FLAT, command=self.fetch_records).pack(side=LEFT, padx=5)
+        read_button = Button(filter_frame, text="Read Aloud",bg="green",fg="white", relief=FLAT, command=self.read_treeview)
         read_button.pack(side=LEFT, padx=5)
-        stop_button = Button(filter_frame, text="Stop",bg="red",fg="white", command=self.stop_reading)
+        stop_button = Button(filter_frame, text="Stop",bg="red",fg="white", relief=FLAT, command=self.stop_reading)
         stop_button.pack(side=LEFT, padx=5)
 
     @clear_treeview
