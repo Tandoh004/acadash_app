@@ -29,7 +29,6 @@ from tkinter import simpledialog
 from pypdf import PdfWriter
 import pyttsx3
 from  pdf2docx import Converter
-import pyfiglet
 
 
 
@@ -75,19 +74,19 @@ class School_Portal:
 
 
         canvas.create_text(
-            x - 10, y,
+            x - 5, y,
             text="Aca",
             fill='white',
-            font=('Helvetical', 18, 'italic bold'),
+            font=('Consolas', 20, 'italic bold'),
             anchor=E
 
         )
       
         canvas.create_text(
-            x - 10, y,
+            x - 5, y,
             text="Dash",
             fill='#FF6F61',
-            font=('Helvetical', 18, 'italic bold'),
+            font=('Consolas', 20, 'italic bold'),
             anchor=W
 
         )
@@ -97,14 +96,14 @@ class School_Portal:
             x, 170 + y_offset,  # Positioned below the inner circle
             text="Your  smart",
             fill='white',
-            font=('lato', 10, 'bold italic'),
+            font=('inter', 10, 'bold italic'),
            
         )
         canvas.create_text(
             x, 185 + y_offset,  # Further down
             text="academic dashboard",
             fill='#FF6F61',
-            font=('lato', 10, 'bold italic'),
+            font=('inter', 10, 'bold italic'),
             
         )
 
@@ -173,8 +172,8 @@ class School_Portal:
         self.logged_in_username = None
         self.user_assignments = None
 
-        #self.create_user_table() 
-        #self.create_assignment_table()
+        self.create_user_table() 
+        self.create_assignment_table()
         self.create_classes_table()
         self.create_subjects_table()
         
@@ -227,27 +226,26 @@ class School_Portal:
  #======================= Time and Date ===========================
     def footer_frame(self):
         # Create a frame for the time/date label
-        footer_frame = Frame(self.root, bg="#2E2E2E", height=30)
+        footer_frame = Frame(self.root, bg="#3B3B3B", height=30)
         footer_frame.grid(row=11, column=0, columnspan=4, sticky="sew", padx=10, pady=(5, 0))
         footer_frame.grid_columnconfigure(0, weight=0)  # Logo (fixed)
         footer_frame.grid_columnconfigure(1, weight=1)  # Time frame (expand)
         footer_frame.grid_columnconfigure(2, weight=0)  # Counter (fixed)
 
-        ascii_logo = pyfiglet.figlet_format("AcaDash", font="slant")
+       
         logo_label = Label(
             footer_frame,
-            text=ascii_logo,
-            font=("Consolas",2, "bold"),
-            bg="#2E2E2E",
+            text="AcaDash®",
+            font=("Consolas",14, "bold italic"),
+            bg="#3B3B3B",
             fg="#AED6F1" ,
-            justify="left",
             anchor="w"
             
         )
         logo_label.grid(row=0, column=0, padx=(10,10), sticky="W")
 
 
-        time_frame = Frame(footer_frame, bg="#2E2E2E")
+        time_frame = Frame(footer_frame, bg="#3B3B3B")
         time_frame.grid(row=0, column=1, columnspan=2, padx=10, pady=0)
           # Configure columns for centering
         time_frame.grid_columnconfigure(0, weight=1)
@@ -256,20 +254,20 @@ class School_Portal:
 
         self.lblInfo = Label(
             time_frame, 
-            font=('fira mono', 14, 'bold'),
-            bg="#2E2E2E", 
+            font=('Segoe UI', 14, 'bold'),
+            bg="#2a3439", 
             fg="white",
             bd=5, 
             relief=SUNKEN
             )
-        self.lblInfo.grid(row=0 , column = 0)
+        self.lblInfo.grid(row=0 , column = 0, padx=10)
         self.tick()
  #======================= Digital Counter ===========================
         # Counter Label
         self.counter_label = Label(
             footer_frame,
             font=("fira mono", 14), 
-            fg="firebrick", bg="khaki", 
+            fg="firebrick", bg="#2a3439", 
             relief=SUNKEN,
             borderwidth=5
             )
@@ -300,7 +298,7 @@ class School_Portal:
         # Centered Title
         title_label = Label(
             title_bar, text="AcaDash - Academic Management Dashboard",
-            font=("inter", 14, "bold"), bg="#1A1A40", fg="white"
+            font=("inter", 18, "bold"), bg="#1A1A40", fg="white"
         )
         title_label.grid(row=0, column=1, padx=0, pady=0, sticky="nsew")
 
@@ -333,7 +331,7 @@ class School_Portal:
             table_frame,
             text="Academic Records Overview",
             bg='navy',
-            font=('poppins', 14, 'bold'),
+            font=('inter', 16, 'bold'),
             fg='white',
             padx=0,     
             pady=0       
@@ -393,7 +391,6 @@ class School_Portal:
     def display_message(self):  
         self.message = Label(
             text="", 
-            fg="orange red",
             bg= 'lavender', 
             font=('inter', 10, 'bold', 'italic')
             )
@@ -410,13 +407,14 @@ class School_Portal:
 
         dialog = Toplevel(self.root)
         dialog.title("School Name")
-        dialog.geometry("500x120")  # Set width here
+        dialog.geometry("500x120") 
+        dialog.config(bg="#3B3B3B") # Set width here
         dialog.grab_set()
-        Label(dialog, text="Enter the name of your school:", font=("inter", 12)).pack(pady=10)
+        Label(dialog, text="Enter the name of your school:",bg="#3B3B3B", fg="white", font=("inter", 12)).pack(pady=10)
         entry = Entry(dialog, width=60, font=("inter", 12))
         entry.pack(padx=20)
         entry.insert(0, self.school_name)
-        Button(dialog, text="Save", command=save_and_close, bg="green", fg="white").pack(pady=10)
+        Button(dialog, text="Save", command=save_and_close,font=("inter", 10), bg="green", fg="white").pack(pady=10)
         entry.focus_set()
         dialog.wait_window()
 
@@ -3634,8 +3632,8 @@ class School_Portal:
         logo_canvas.create_oval(20, 20 + y_offset, 160, 160 + y_offset, fill='navy', outline='white', width=2)
         logo_canvas.create_oval(30, 30 + y_offset, 150, 150 + y_offset, fill='#1A1A40', outline='royalblue', width=2)
 
-        logo_canvas.create_text(x - 10, y, text="Aca", fill='white', font=('Helvetica', 18, 'italic bold'), anchor='e')
-        logo_canvas.create_text(x - 10, y, text="Dash", fill='#FF6F61', font=('Helvetica', 18, 'italic bold'), anchor='w')
+        logo_canvas.create_text(x - 5, y, text="Aca", fill='white', font=('Consolas', 20, 'italic bold'), anchor='e')
+        logo_canvas.create_text(x - 5, y, text="Dash", fill='#FF6F61', font=('Consolas', 20, 'italic bold'), anchor='w')
 
         
         # Draw an inverted open book symbol ABOVE the text
