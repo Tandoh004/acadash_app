@@ -29,6 +29,7 @@ from tkinter import simpledialog
 from pypdf import PdfWriter
 import pyttsx3
 from  pdf2docx import Converter
+import pyfiglet
 
 
 
@@ -222,19 +223,32 @@ class School_Portal:
         root.grid_columnconfigure(0, weight=1)
         root.grid_columnconfigure(1, weight=1)
         root.grid_columnconfigure(2, weight=1)
-
-
-    
+         
  #======================= Time and Date ===========================
     def footer_frame(self):
         # Create a frame for the time/date label
         footer_frame = Frame(self.root, bg="#2E2E2E", height=30)
-        footer_frame.grid(row=11, column=0, columnspan=4, sticky="sew", padx=10, pady=5)
-        footer_frame.grid_columnconfigure(0, weight=1)  # Left labe expands
-         
+        footer_frame.grid(row=11, column=0, columnspan=4, sticky="sew", padx=10, pady=(5, 0))
+        footer_frame.grid_columnconfigure(0, weight=0)  # Logo (fixed)
+        footer_frame.grid_columnconfigure(1, weight=1)  # Time frame (expand)
+        footer_frame.grid_columnconfigure(2, weight=0)  # Counter (fixed)
 
-        time_frame = Frame(footer_frame)
-        time_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=0)
+        ascii_logo = pyfiglet.figlet_format("AcaDash", font="slant")
+        logo_label = Label(
+            footer_frame,
+            text=ascii_logo,
+            font=("Consolas",2, "bold"),
+            bg="#2E2E2E",
+            fg="#AED6F1" ,
+            justify="left",
+            anchor="w"
+            
+        )
+        logo_label.grid(row=0, column=0, padx=(10,10), sticky="W")
+
+
+        time_frame = Frame(footer_frame, bg="#2E2E2E")
+        time_frame.grid(row=0, column=1, columnspan=2, padx=10, pady=0)
           # Configure columns for centering
         time_frame.grid_columnconfigure(0, weight=1)
         time_frame.grid_columnconfigure(1, weight=1)
@@ -244,13 +258,12 @@ class School_Portal:
             time_frame, 
             font=('fira mono', 14, 'bold'),
             bg="#2E2E2E", 
-            fg='white', 
+            fg="white",
             bd=5, 
             relief=SUNKEN
             )
         self.lblInfo.grid(row=0 , column = 0)
         self.tick()
-
  #======================= Digital Counter ===========================
         # Counter Label
         self.counter_label = Label(
@@ -276,7 +289,8 @@ class School_Portal:
         time2 = time.strftime('%I:%M:%S %p')
         self.lblInfo.config(text= time2+'\t'+today)
         self.lblInfo.after(200, self.tick)
-        
+    
+       
        #=======================Tittle Bar ==============================
     def create_title_bar(self):
         title_bar = Frame(self.root, bg="#1A1A40", height=35)
@@ -1412,7 +1426,7 @@ class School_Portal:
             padx=10,
             pady=5
         )
-        frame.grid(row=4, column=0, padx=10, pady=5, sticky=SW)
+        frame.grid(row=4, column=0, padx=10, pady=0, sticky=SW)
 
         # Title label
         Label(
@@ -1494,7 +1508,7 @@ class School_Portal:
     def setup_main_filter_frame(self):
         """Creates the main filter frame on the app."""
         filter_frame = Frame(self.root, bg="#1C1C1C", bd=2, relief="groove")
-        filter_frame.grid(row=4, column=1, padx=10, pady=10, sticky="se")
+        filter_frame.grid(row=4, column=1, padx=10, pady=0, sticky="se")
 
         Label(filter_frame, text="Filter by Year:", font= ("inter", 10), bg="#1C1C1C", fg="white").pack(side=LEFT, padx=(10, 5))
         self.year_entry = Entry(filter_frame, width=10)
@@ -1642,7 +1656,7 @@ class School_Portal:
 
         # Create frame for graph
         graph_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
-        graph_frame.grid(row=1, column=2, rowspan=5, padx=5, pady=5, sticky=NSEW)
+        graph_frame.grid(row=1, column=2, rowspan=5, padx=5, pady=(0, 5), sticky=NSEW)
         
         # Add title
         Label(graph_frame, 
@@ -1783,7 +1797,7 @@ class School_Portal:
 
         # Create frame for the plot
         donut_frame = Frame(self.root, bg="white", bd=2, relief=RIDGE)
-        donut_frame.grid(row=6, column=2, rowspan=5, padx=5, sticky=NSEW)
+        donut_frame.grid(row=6, column=2, rowspan=5, padx=(5,0), sticky=NSEW)
         self.root.grid_columnconfigure(2, weight=1)
         self.root.grid_rowconfigure(5, weight=1)
 
@@ -1868,7 +1882,7 @@ class School_Portal:
 
         # Create frame for percentage display
         percentage_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
-        percentage_frame.grid(row=1, column=1, padx=0, pady=20, sticky=NW)
+        percentage_frame.grid(row=1, column=1, padx=0, pady=(20,0), sticky=NW)
 
         # Title
         Label(percentage_frame,
@@ -1989,7 +2003,7 @@ class School_Portal:
             padx=10,
             relief=RIDGE
         )
-        self.grade_frame.grid(row=1, column=1, sticky=E, padx=10, pady=20)
+        self.grade_frame.grid(row=1, column=1, sticky=E, padx=10, pady=(20,0))
 
         grade_label = Label(
             self.grade_frame,
