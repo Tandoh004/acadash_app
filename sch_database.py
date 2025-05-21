@@ -162,7 +162,7 @@ class School_Portal:
 
     def __init__(self, root):
         self.root = root
-        root.config(bg="lavender")
+        root.config(bg="alice blue")
         self.root.title("Academic Management Dashboard")
         self.engine = pyttsx3.init()
 
@@ -172,7 +172,7 @@ class School_Portal:
 
 
         # Create main canvas with scrollbars
-        self.main_canvas = Canvas(root, bg="lavender")
+        self.main_canvas = Canvas(root, bg="alice blue")
         y_scrollbar = ttk.Scrollbar(root, orient=VERTICAL, command=self.main_canvas.yview)
         #x_scrollbar = ttk.Scrollbar(root, orient=HORIZONTAL, command=self.main_canvas.xview)
 
@@ -192,7 +192,7 @@ class School_Portal:
         root.grid_columnconfigure(0, weight=1)
 
         # Create main frame inside canvas
-        self.main_frame = Frame(self.main_canvas, bg="lavender")
+        self.main_frame = Frame(self.main_canvas, bg="alice blue")
         
         # Add the main frame to canvas
         self.canvas_frame = self.main_canvas.create_window(
@@ -368,7 +368,7 @@ class School_Portal:
 
        #======================= Table Title ===========================
     def table_title(self):  
-        table_frame = Frame(self.main_frame, bg="navy", height=30)
+        table_frame = Frame(self.main_frame, bg="navy", height=35)
         table_frame.grid(row=7, column=0, columnspan=2, padx=10, pady=5, sticky=EW)
         table_frame.grid_propagate(False) 
 
@@ -452,7 +452,7 @@ class School_Portal:
         self.message = Label(
             self.main_frame,
             text="", 
-            bg= 'lavender', 
+            bg= 'alice blue', 
             font=('inter', 10, 'bold', 'italic')
             )
         self.message.grid(row=3, column=1, sticky=SW)
@@ -1494,6 +1494,7 @@ class School_Portal:
             font=('inter', 11, 'bold'),
             fg='white',
             bg='navy',
+            relief="flat"
         ).pack(fill=X)
 
         # Create sub-frames for better organization
@@ -1945,8 +1946,8 @@ class School_Portal:
             widget.destroy()
 
         # Create frame for percentage display
-        percentage_frame = Frame(self.main_frame, bg='white', bd=2, relief=RIDGE)
-        percentage_frame.grid(row=0, column=1, padx=0, pady=(50,0), sticky=NW)
+        percentage_frame = Frame(self.main_frame, bg='alice blue', bd=2, relief=FLAT)
+        percentage_frame.grid(row=0, column=1, padx=0, pady=(50,0), sticky=W)
 
         # Title
         Label(percentage_frame,
@@ -1959,18 +1960,18 @@ class School_Portal:
         ).pack(fill=X)
 
         # Pass percentage arrow bar
-        pass_frame = Frame(percentage_frame, bg='white', pady=5)
+        pass_frame = Frame(percentage_frame, bg='alice blue', pady=5)
         pass_frame.pack(fill=X, padx=10)
         Label(pass_frame,
             text="Pass:",
             font=("inter", 10),
-            bg='white',
+            bg='alice blue',
             width=8,
             anchor=W
         ).pack(side=LEFT)
         
         # Create canvas for pass arrow
-        pass_canvas = Canvas(pass_frame, height=20, width=150, bg='white', bd=0, highlightthickness=0)
+        pass_canvas = Canvas(pass_frame, height=20, width=150, bg='alice blue', bd=0, highlightthickness=0)
         pass_canvas.pack(side=LEFT, padx=5)
         
         # Draw pass arrow
@@ -1985,22 +1986,22 @@ class School_Portal:
         Label(pass_frame,
             text=f"{pass_percentage:.1f}%",
             font=("inter", 10),
-            bg='white'
+            bg='alice blue'
         ).pack(side=LEFT)
 
         # Fail percentage arrow bar
-        fail_frame = Frame(percentage_frame, bg='white', pady=5)
+        fail_frame = Frame(percentage_frame, bg='alice blue', pady=5)
         fail_frame.pack(fill=X, padx=10)
         Label(fail_frame,
             text="Fail:",
             font=("inter", 10),
-            bg='white',
+            bg='alice blue',
             width=8,
             anchor=W
         ).pack(side=LEFT)
         
         # Create canvas for fail arrow
-        fail_canvas = Canvas(fail_frame, height=20, width=150, bg='white', bd=0, highlightthickness=0)
+        fail_canvas = Canvas(fail_frame, height=20, width=150, bg='alice blue', bd=0, highlightthickness=0)
         fail_canvas.pack(side=LEFT, padx=5)
         
         # Draw fail arrow
@@ -2015,14 +2016,14 @@ class School_Portal:
         Label(fail_frame,
             text=f"{fail_percentage:.1f}%",
             font=("inter", 10),
-            bg='white'
+            bg='alice blue'
         ).pack(side=LEFT)
 
         # Add total students count
         Label(percentage_frame,
             text=f"Total Students: {total_students}",
             font=("inter", 10),
-            bg='white',
+            bg='alice blue',
             pady=5
         ).pack()
 
@@ -2063,17 +2064,20 @@ class School_Portal:
         # Create frame
         self.grade_frame = LabelFrame(
             self.main_frame,
-            bg='white',
+            bg='alice blue',
             padx=10,
-            relief=RIDGE
+            relief=FLAT,
+            bd=2
         )
-        self.grade_frame.grid(row=0, column=1, sticky=E, padx=10, pady=(0,0))
+        self.grade_frame.grid(row=0, column=1, sticky=NE, padx=10, pady=(50,0))
 
         grade_label = Label(
             self.grade_frame,
             text="Grade Summary", 
             font=('inter', 11, 'bold'), 
-            fg="white", bg="navy"
+            fg="white", 
+            bg="navy", 
+            pady=5
         )
             
         grade_label.pack(fill=BOTH)
@@ -2095,7 +2099,7 @@ class School_Portal:
                 self.grade_frame,
                 text=f"{grade}: {count}",
                 font=('inter', 10),
-                bg='white',
+                bg='alice blue',
                 anchor='w'
             )
             label.pack(fill=X, pady=1)
@@ -2105,7 +2109,7 @@ class School_Portal:
                 # Add a red separator line **after D7**
             if grade == "C6  Credit":
                 # Create a canvas wide enough for the full width of the frame
-                line_canvas = Canvas(self.grade_frame, height=2, width=100, bg='white', highlightthickness=0)
+                line_canvas = Canvas(self.grade_frame, height=2, width=100, bg='alice blue', highlightthickness=0)
                 line_canvas.pack(fill=X, pady=5)
 
                 # Draw a horizontal red line across the canvas
@@ -2129,7 +2133,7 @@ class School_Portal:
         stats_window = Toplevel(self.root)
         stats_window.title(f"Class Statistics - {selected_class}")
         stats_window.geometry("800x600")
-        stats_window.config(bg="lavender")
+        stats_window.config(bg="alice blue")
         stats_window.grab_set()
 
         # Center the window
@@ -2159,7 +2163,7 @@ class School_Portal:
         df = pd.DataFrame(result, columns=['Class Score', 'Exam Score', 'Total Score', 'Gender'])
 
         # Center the stats_frame in the window
-        stats_frame = Frame(stats_window, bg="lavender", bd=2, relief=RIDGE)
+        stats_frame = Frame(stats_window, bg="alice blue", bd=2, relief=RIDGE)
         stats_frame.pack(fill=None, expand=True,  padx=10, pady=10, anchor=CENTER)
 
         stats_label = Label(
@@ -2173,7 +2177,7 @@ class School_Portal:
         stats_label.pack(fill=X, pady=(0,10))
 
         # --- Make the stats_text scrollable ---
-        stats_text_frame = Frame(stats_frame, bg="lavender")
+        stats_text_frame = Frame(stats_frame, bg="alice blue")
         stats_text_frame.pack(fill=BOTH, expand=True, padx=0, pady=0)
 
         stats_scrollbar = Scrollbar(stats_text_frame, orient=VERTICAL)
@@ -2204,7 +2208,7 @@ class School_Portal:
         stats_text.config(state=DISABLED)
 
         # Create gender comparison graph
-        graph_frame = Frame(stats_window, bg="lavender", bd=2, relief=RIDGE)
+        graph_frame = Frame(stats_window, bg="alice blue", bd=2, relief=RIDGE)
         graph_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
 
         fig = plt.Figure(figsize=(6, 4))
@@ -2724,7 +2728,7 @@ class School_Portal:
         report_window = Toplevel(self.root)
         report_window.title("Student Report")
         report_window.geometry("400x200")
-        report_window.config(bg="lavender")
+        report_window.config(bg="alice blue")
         report_window.grab_set()
 
 
@@ -2732,12 +2736,12 @@ class School_Portal:
         firstname_var = StringVar()
         lastname_var = StringVar()
 
-        Label(report_window, text="Enter First Name:", font=("inter", 12), bg="lavender").grid(
+        Label(report_window, text="Enter First Name:", font=("inter", 12), bg="alice blue").grid(
             row=0, column=0, padx=10, pady=10, sticky=W)
         Entry(report_window, width=30, textvariable=firstname_var).grid(
             row=0, column=1, padx=10, pady=10)
 
-        Label(report_window, text="Enter Last Name:", font=("inter", 12), bg="lavender").grid(
+        Label(report_window, text="Enter Last Name:", font=("inter", 12), bg="alice blue").grid(
             row=1, column=0, padx=10, pady=10, sticky=W)
         Entry(report_window, width=30, textvariable=lastname_var).grid(
             row=1, column=1, padx=10, pady=10)
@@ -3133,7 +3137,7 @@ class School_Portal:
         
         
         # Add about text
-        text_widget = Text(frame, wrap=WORD, bg='lavender', padx=10, pady=10,
+        text_widget = Text(frame, wrap=WORD, bg='alice blue', padx=10, pady=10,
                         font=('inter', 10), height=15)
         text_widget.pack(fill=BOTH, expand=True)
         text_widget.insert('1.0', about_text)
@@ -3732,7 +3736,7 @@ class School_Portal:
             fg="orange",
             bg="#3B3B3B",
             font=("inter", 10, "italic"),
-            selectcolor="lavender",
+            selectcolor="alice blue",
         )
         remember_me_checkbox.grid(row=3, column=1, sticky=W, pady=(5, 15))
 
