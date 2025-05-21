@@ -42,14 +42,14 @@ class School_Portal:
         """Create a custom logo using Canvas"""
         # Create canvas for logo
         canvas = Canvas(
-            self.root,
+            self.main_frame,
             width=180,
             height=180,
             bg='navy',
             bd=2,
             relief=RIDGE
         )
-        canvas.grid(row=1, column=0, padx=60, pady=20, sticky=NW)
+        canvas.grid(row=0, column=0, padx=60, pady=(50), sticky=NW)
 
         
         #adjust position upwards
@@ -165,7 +165,47 @@ class School_Portal:
         root.config(bg="lavender")
         self.root.title("Academic Management Dashboard")
         self.engine = pyttsx3.init()
+
+        # Configure root grid weights
+        root.grid_rowconfigure(0, weight=1)  # Make row 0 expandable
+        root.grid_columnconfigure(0, weight=1)  # Make column 0 expandable
+
+
+        # Create main canvas with scrollbars
+        self.main_canvas = Canvas(root, bg="lavender")
+        y_scrollbar = ttk.Scrollbar(root, orient=VERTICAL, command=self.main_canvas.yview)
+        #x_scrollbar = ttk.Scrollbar(root, orient=HORIZONTAL, command=self.main_canvas.xview)
+
+        # Configure scrollbars
+        self.main_canvas.configure(
+            yscrollcommand=y_scrollbar.set,
+            #xscrollcommand=x_scrollbar.set
+        )
+
+        # Use grid for all widgets
+        self.main_canvas.grid(row=0, column=0, sticky="nsew")
+        y_scrollbar.grid(row=0, column=1, sticky="ns")
+        #x_scrollbar.grid(row=10, column=0, sticky="ew")
+
+        # Configure root grid weights
+        root.grid_rowconfigure(0, weight=1)
+        root.grid_columnconfigure(0, weight=1)
+
+        # Create main frame inside canvas
+        self.main_frame = Frame(self.main_canvas, bg="lavender")
         
+        # Add the main frame to canvas
+        self.canvas_frame = self.main_canvas.create_window(
+            (0, 0),
+            window=self.main_frame,
+            anchor="nw",
+            width=window_width,    # Set initial width
+            height=window_height   # Set initial height
+        )
+        # Configure scrolling
+        self.main_frame.bind("<Configure>", self.on_frame_configure)
+        self.main_canvas.bind("<Configure>", self.on_canvas_configure)
+
 
         # Initialize the current_user_role attribute
         self.current_user_role = None  # Default value before login
@@ -213,21 +253,32 @@ class School_Portal:
         #School name 
         self.school_name = "JUABOSO SENIOR HIGH SCHOOL (JUASEC)"  # Default value
 
-        
+    def on_frame_configure(self, event=None):
+        """Reset the scroll region to encompass the inner frame"""
+        self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all"))
+
+    def on_canvas_configure(self, event):
+        """Resize the inner frame to match the canvas"""
+        width = event.width
+        height = event.height
+        self.main_canvas.itemconfig(self.canvas_frame, width=width)
 
     def configure_grid(self, root):
         """Configure the grid layout for the root window."""
         # Configure rows and columns to be expandable
+        self.main_frame.grid_rowconfigure(0, weight=1)
+        self.main_frame.grid_columnconfigure(0, weight=1)
+        self.main_frame.grid_columnconfigure(1, weight=1)
+        self.main_frame.grid_columnconfigure(2, weight=1)
+            # Configure root grid weights
         root.grid_rowconfigure(0, weight=1)
         root.grid_columnconfigure(0, weight=1)
-        root.grid_columnconfigure(1, weight=1)
-        root.grid_columnconfigure(2, weight=1)
          
  #======================= Time and Date ===========================
     def footer_frame(self):
         # Create a frame for the time/date label
-        footer_frame = Frame(self.root, bg="#3B3B3B", height=30)
-        footer_frame.grid(row=11, column=0, columnspan=4, sticky="sew", padx=10, pady=(5, 0))
+        footer_frame = Frame(self.root, bg="#3B3B3B", height=40)
+        footer_frame.grid(row=11, column=0, columnspan=4, sticky="sew", padx=5, pady=(5, 0))
         footer_frame.grid_columnconfigure(0, weight=0)  # Logo (fixed)
         footer_frame.grid_columnconfigure(1, weight=1)  # Time frame (expand)
         footer_frame.grid_columnconfigure(2, weight=0)  # Counter (fixed)
@@ -267,7 +318,7 @@ class School_Portal:
         self.counter_label = Label(
             footer_frame,
             font=("fira mono", 14), 
-            fg="firebrick", bg="#2a3439", 
+            fg="khaki", bg="#2a3439", 
             relief=SUNKEN,
             borderwidth=5
             )
@@ -291,8 +342,8 @@ class School_Portal:
        
        #=======================Tittle Bar ==============================
     def create_title_bar(self):
-        title_bar = Frame(self.root, bg="#1A1A40", height=35)
-        title_bar.grid(row=0, column=0, columnspan=4, padx=10, sticky="new")
+        title_bar = Frame(self.root, bg="#1A1A40", height=40)
+        title_bar.grid(row=0, column=0, columnspan=4, padx=5, sticky="new")
         title_bar.grid_propagate(False)
 
         # Centered Title
@@ -317,7 +368,7 @@ class School_Portal:
 
        #======================= Table Title ===========================
     def table_title(self):  
-        table_frame = Frame(self.root, bg="navy", height=30)
+        table_frame = Frame(self.main_frame, bg="navy", height=30)
         table_frame.grid(row=7, column=0, columnspan=2, padx=10, pady=5, sticky=EW)
         table_frame.grid_propagate(False) 
 
@@ -347,16 +398,25 @@ class School_Portal:
         style.configure("Treeview", rowheight=22, font=("inter", 11))
         style.map("Treeview", background=[("selected", "#3B3B3B")])
 
+        # Create a frame to hold both Treeview and scrollbar
+        tree_frame = Frame(self.main_frame)
+        tree_frame.grid(row=8, column=0, columnspan=2, padx=10, sticky=NSEW)
+
+        # Configure the tree frame grid
+        tree_frame.grid_rowconfigure(0, weight=1)
+        tree_frame.grid_columnconfigure(0, weight=1)
+
         # Create the Treeview
         self.tree = ttk.Treeview(
+            tree_frame,
             height=10,  # Minimum number of rows
             columns=["", "", "", "", "", "", ""]
         )
-        self.tree.grid(row=8, column=0, columnspan=2, padx=10, sticky=NSEW)  # Make treeview expandable
+        self.tree.grid(row=0, column=0, sticky=NSEW)  # Make treeview expandable
 
         # Add scrollbars to Treeview
-        y_scrollbar = ttk.Scrollbar(orient=VERTICAL, command=self.tree.yview)
-        y_scrollbar.grid(row=8, column=3, sticky=NS)
+        y_scrollbar = ttk.Scrollbar(tree_frame, orient=VERTICAL, command=self.tree.yview)
+        y_scrollbar.grid(row=0, column=1, sticky=NS)
         self.tree.configure(yscrollcommand=y_scrollbar.set)
 
 
@@ -390,6 +450,7 @@ class School_Portal:
     #======================= Message Display ========================
     def display_message(self):  
         self.message = Label(
+            self.main_frame,
             text="", 
             bg= 'lavender', 
             font=('inter', 10, 'bold', 'italic')
@@ -609,12 +670,12 @@ class School_Portal:
             self.tree.delete(item)
 
         # Clear any graphs (only rows 1-10, column 2)
-        for widget in self.root.grid_slaves():
+        for widget in self.main_frame.grid_slaves():
             info = widget.grid_info()
             row = int(info.get('row', -1))
             col = int(info.get('column', -1))
             # Only clear widgets in columns 1 or 2, rows 1-10 but skip row=4 ,column=1
-            if (col in [1, 2]) and (1 <= row <= 10) and not ((row == 3 and col == 1) or (row == 4 and col==1)): 
+            if (col in [1, 2]) and (0 <= row <= 10) and not ((row == 3 and col == 1) or (row == 4 and col==1)): 
                 widget.destroy()
 
         # Reset the message display
@@ -1417,7 +1478,7 @@ class School_Portal:
         """Create frame for class and subject selection"""
         # Create main frame
         frame = LabelFrame(
-            self.root,
+            self.main_frame,
             bg='#1C1C1C',
             bd=2,
             relief=GROOVE,
@@ -1505,7 +1566,7 @@ class School_Portal:
     # ============================= Fetch records ===================================
     def setup_main_filter_frame(self):
         """Creates the main filter frame on the app."""
-        filter_frame = Frame(self.root, bg="#1C1C1C", bd=2, relief="groove")
+        filter_frame = Frame(self.main_frame, bg="#1C1C1C", bd=2, relief="groove")
         filter_frame.grid(row=4, column=1, padx=10, pady=0, sticky="se")
 
         Label(filter_frame, text="Filter by Year:", font= ("inter", 10), bg="#1C1C1C", fg="white").pack(side=LEFT, padx=(10, 5))
@@ -1649,12 +1710,16 @@ class School_Portal:
         })
 
         # Clear existing graph
-        for widget in self.root.grid_slaves(row=1, column=2):
+        for widget in self.main_frame.grid_slaves(row=1, column=2):
             widget.destroy()
 
         # Create frame for graph
-        graph_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
-        graph_frame.grid(row=1, column=2, rowspan=5, padx=5, pady=(0, 5), sticky=NSEW)
+        graph_frame = Frame(self.main_frame, bg='white', bd=2, relief=RIDGE)
+        graph_frame.grid(row=0, column=2, rowspan=5, padx=5, pady=(50, 5), sticky=NSEW)
+         #Configure graph_frame grid weights
+        graph_frame.grid_rowconfigure(0, weight=1)
+        graph_frame.grid_columnconfigure(2, weight=1)
+
         
         # Add title
         Label(graph_frame, 
@@ -1790,14 +1855,15 @@ class School_Portal:
         fig.gca().add_artist(center_circle)
 
         # Clear existing plot
-        for widget in self.root.grid_slaves(row=6, column=2):
+        for widget in self.main_frame.grid_slaves(row=6, column=2):
             widget.destroy()
 
         # Create frame for the plot
-        donut_frame = Frame(self.root, bg="white", bd=2, relief=RIDGE)
-        donut_frame.grid(row=6, column=2, rowspan=5, padx=(5,0), sticky=NSEW)
-        self.root.grid_columnconfigure(2, weight=1)
-        self.root.grid_rowconfigure(5, weight=1)
+        donut_frame = Frame(self.main_frame, bg="white", bd=2, relief=RIDGE)
+        donut_frame.grid(row=6, column=2, rowspan=5, padx=(5,5,), pady=(0,5), sticky=NSEW)
+        # Configure donut_frame grid weights
+        donut_frame.grid_rowconfigure(5, weight=1)
+        donut_frame.grid_columnconfigure(2, weight=1)
 
         # Embed plot in frame
         canvas = FigureCanvasTkAgg(fig, master=donut_frame)
@@ -1875,12 +1941,12 @@ class School_Portal:
             pass_percentage = fail_percentage = 0
 
         # Clear existing widgets
-        for widget in self.root.grid_slaves(row=1, column=1):
+        for widget in self.main_frame.grid_slaves(row=1, column=1):
             widget.destroy()
 
         # Create frame for percentage display
-        percentage_frame = Frame(self.root, bg='white', bd=2, relief=RIDGE)
-        percentage_frame.grid(row=1, column=1, padx=0, pady=(20,0), sticky=NW)
+        percentage_frame = Frame(self.main_frame, bg='white', bd=2, relief=RIDGE)
+        percentage_frame.grid(row=0, column=1, padx=0, pady=(50,0), sticky=NW)
 
         # Title
         Label(percentage_frame,
@@ -1996,12 +2062,12 @@ class School_Portal:
 
         # Create frame
         self.grade_frame = LabelFrame(
-            self.root,
+            self.main_frame,
             bg='white',
             padx=10,
             relief=RIDGE
         )
-        self.grade_frame.grid(row=1, column=1, sticky=E, padx=10, pady=(20,0))
+        self.grade_frame.grid(row=0, column=1, sticky=E, padx=10, pady=(0,0))
 
         grade_label = Label(
             self.grade_frame,
