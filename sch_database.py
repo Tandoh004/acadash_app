@@ -368,7 +368,7 @@ class School_Portal:
 
        #======================= Table Title ===========================
     def table_title(self):  
-        table_frame = Frame(self.main_frame, bg="navy", height=35)
+        table_frame = Frame(self.main_frame, bg="navy", height=30)
         table_frame.grid(row=7, column=0, columnspan=2, padx=10, pady=5, sticky=EW)
         table_frame.grid_propagate(False) 
 
@@ -394,8 +394,8 @@ class School_Portal:
     def display_table(self):
         # Configure the Treeview style
         style = ttk.Style()
-        style.configure("Treeview.Heading", foreground="dark blue", font=("inter", 12, "bold"))  # Set header text color and font
-        style.configure("Treeview", rowheight=22, font=("inter", 11))
+        style.configure("Treeview.Heading", foreground="dark blue", font=("inter", 11, "bold"))  # Set header text color and font
+        style.configure("Treeview", rowheight=22, font=("inter", 10))
         style.map("Treeview", background=[("selected", "#3B3B3B")])
 
         # Create a frame to hold both Treeview and scrollbar
@@ -431,16 +431,16 @@ class School_Portal:
         self.tree.column("#2", width=140)
 
         self.tree.heading("#3", text="Gender")
-        self.tree.column("#3", width=70)
+        self.tree.column("#3", width=70, anchor= CENTER)
 
         self.tree.heading("#4", text="Class Score")
-        self.tree.column("#4", width=100)
+        self.tree.column("#4", width=100, anchor = CENTER)
 
         self.tree.heading("#5", text="Exam Score")
-        self.tree.column("#5", width=100)
+        self.tree.column("#5", width=100, anchor = CENTER)
 
         self.tree.heading("#6", text="Total Score")
-        self.tree.column("#6", width=100)
+        self.tree.column("#6", width=100, anchor = CENTER)
 
         self.tree.heading("#7", text="Grade & Remarks")
         self.tree.column("#7", width=150)
