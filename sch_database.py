@@ -230,10 +230,8 @@ class School_Portal:
         
 
         # Create logo using canvas instead of image
-        self.logo_canvas = self.create_logo_on_canvas()
+        #self.logo_canvas = self.create_logo_on_canvas()
 
-   
-    
     # ================================= Setup method===========================
     def setup_ui(self):
         """Setup all UI elements after database connection"""
@@ -1665,6 +1663,7 @@ class School_Portal:
         self.draw_donut_plot()
         self.update_pass_percentage()
         self.grade_summary()
+        self.show_class_counts()
 
 
     #================================================ Plot Histogram ====================================
@@ -1759,9 +1758,7 @@ class School_Portal:
         # Customize plot
         ax.set_title(
             f"{selected_class} - {selected_subject or ""}\nScore Distribution Analysis",
-            fontsize=10,
-            color="darkblue" 
-
+            fontsize=10 
             )
         ax.set_xlabel("Test Score")
         ax.set_ylabel("Frequency")
@@ -1838,8 +1835,7 @@ class School_Portal:
         ax.set_title(
             f"Class Performance Overview: {selected_class} - {selected_subject}",
             fontsize =(10),
-            pad=8, 
-            color="darkblue"                        
+            pad=8,                         
         )
         
         legend = ax.legend(
@@ -1942,12 +1938,12 @@ class School_Portal:
             pass_percentage = fail_percentage = 0
 
         # Clear existing widgets
-        for widget in self.main_frame.grid_slaves(row=1, column=1):
+        for widget in self.main_frame.grid_slaves(row=0, column=1):
             widget.destroy()
 
         # Create frame for percentage display
         percentage_frame = Frame(self.main_frame, bg='alice blue', bd=2, relief=FLAT)
-        percentage_frame.grid(row=0, column=1, padx=0, pady=(50,0), sticky=W)
+        percentage_frame.grid(row=0, column=1, padx=50, pady=(50,0), sticky=NW)
 
         # Title
         Label(percentage_frame,
@@ -2019,14 +2015,6 @@ class School_Portal:
             bg='alice blue'
         ).pack(side=LEFT)
 
-        # Add total students count
-        Label(percentage_frame,
-            text=f"Total Students: {total_students}",
-            font=("inter", 10),
-            bg='alice blue',
-            pady=5
-        ).pack()
-
 
    #=======================Grade Summary =======================
     @db_error_handler
@@ -2077,7 +2065,8 @@ class School_Portal:
             font=('inter', 11, 'bold'), 
             fg="white", 
             bg="navy", 
-            pady=5
+            pady=5,
+            width=15
         )
             
         grade_label.pack(fill=BOTH)
@@ -2095,16 +2084,31 @@ class School_Portal:
         for grade in grades:
             count = grade_counts.get(grade, 0)
 
-            label = Label(
-                self.grade_frame,
-                text=f"{grade}: {count}",
+             #Create a frame for each grade row
+            grade_row = Frame(self.grade_frame, bg='alice blue')
+            grade_row.pack(fill=X, pady=1)
+
+            # Grade label (left)
+            Label(
+                grade_row,
+                text=grade,
                 font=('inter', 10),
                 bg='alice blue',
+                width=12,  # Fixed width for grade
                 anchor='w'
-            )
-            label.pack(fill=X, pady=1)
+            ).pack(side=LEFT)
 
-            self.grade_labels[grade] = label
+            # Count label (right)
+            Label(
+                grade_row,
+                text=str(count),
+                font=('inter', 10),
+                bg='alice blue',
+                width=0,  # Fixed width for count
+                anchor='e'
+            ).pack(side=RIGHT)
+
+            self.grade_labels[grade] = grade_row
 
                 # Add a red separator line **after D7**
             if grade == "C6  Credit":
@@ -2114,6 +2118,103 @@ class School_Portal:
 
                 # Draw a horizontal red line across the canvas
                 line_canvas.create_line(0, 2, 100, 2, fill='red', width=2)
+
+
+
+    @db_error_handler
+    def show_class_counts(self):
+        """Show descriptive statistics for the selected class"""
+        # Get selected class and subject
+        selected_class = self.class_combobox.get()
+        selected_subject = self.subject_combobox.get()
+
+        # Validate selection
+        if not selected_class or selected_class == "Choose Class":
+            self.show_message("Info", "Please select a class first.", "info")
+            return
+
+        # Fetch data from database with gender grouping
+        query = """
+            SELECT gender, COUNT(DISTINCT s.id) as count
+            FROM academic_records a
+            JOIN students_records s ON s.id = a.student_id
+            WHERE a.year = ? AND a.period = ? AND s.class_ = ?
+         
+        """
+        params = [self.selected_year, self.selected_period, selected_class]
+
+        if selected_subject and selected_subject != "Choose Subject":
+            query += " AND subject = ?" 
+            params.append(selected_subject)
+        
+        query += " GROUP BY gender" 
+
+        result = self.run_query(query, params).fetchall()
+
+        # Initialize counters
+        total_students = 0
+        male_count = 0
+        female_count = 0
+
+        # Process results
+        for gender, count in result:
+            total_students += count
+            if gender == 'M':
+                male_count = count
+            elif gender == 'F':
+                female_count = count
+
+         # Create record frame if it doesn't exist, or clear it if it does
+        if not hasattr(self, 'record_frame'):
+            self.record_frame = Frame(self.main_frame, bg='alice blue', bd=2, relief=FLAT)
+            self.record_frame.grid(row=0, column=0, padx=50, pady=(50,0), sticky=NW)
+        else:
+            # Clear existing widgets
+            for widget in self.record_frame.winfo_children():
+                widget.destroy()
+
+
+        frame_label = Label(
+            self.record_frame,
+            text="Number of Students", 
+            font=('inter', 11, 'bold'), 
+            fg="white", 
+            bg="navy", 
+            pady=5
+        )
+            
+        frame_label.pack(fill=BOTH)
+
+        
+        # Add male count
+        Label(
+            self.record_frame,
+            text=f"Male Students:     {male_count}",
+            font=("inter", 10),
+            bg='alice blue',
+            pady=5,
+            anchor=W
+        ).pack(side=TOP, fill=X, padx=10)
+
+        # Add female count
+        Label(
+            self.record_frame,
+            text=f"Female Students: {female_count}",
+            font=("inter", 10),
+            bg='alice blue',
+            pady=5,
+            anchor=W
+        ).pack(side=TOP, fill=X, padx=10)
+
+        # Add total students count
+        Label(
+            self.record_frame,
+            text=f"Total Students:     {total_students}",
+            font=("inter", 10),
+            bg='alice blue',
+            pady=5,
+            anchor=W
+        ).pack(side=TOP, fill=X, padx=10)
 
 
   #=============================== Class Stats ============================
