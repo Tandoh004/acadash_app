@@ -907,68 +907,100 @@ class School_Portal:
         """Open a window to edit the selected record (user only)"""
         self.message["text"] = ""
         try:
-            # Get the selected record? values
+            # Get the selected record values
             selected_item = self.tree.selection()
             if not selected_item:
                 raise IndexError("No record selected")
             record_values = self.tree.item(selected_item)["values"]
             record_id = self.tree.item(selected_item)["text"]  
         except IndexError:
-            self.show_message("Info","Please select a record to edit", "info")
-            
+            self.show_message("Info", "Please select a record to edit", "info")
             return
         
         # Open the edit window
         self.edit_wind = Toplevel()
         self.edit_wind.title("Edit Record")
-        self.edit_wind.geometry("350x300")
+        self.edit_wind.geometry("350x250")  # Reduced height since fewer fields
         self.edit_wind.config(bg='#3B3B3B')
         self.edit_wind.grab_set()
 
-        # Field labels and entry fields
-        fields = [
-            ("First Name", record_values[0]),
-            ("Last Name", record_values[1]),
-            ("Gender", record_values[2]),
-            ("Class Score", record_values[3]),
-            ("Exam Score", record_values[4]),
-            ("Total Score", record_values[5]),
-            ("Grade", record_values[6]),
-        ]
+        # Create and populate entry fields
+        Label(self.edit_wind, text="First Name:", font=("inter", 12), bg='#3B3B3B', fg='white').grid(row=0, column=0, padx=10, pady=5, sticky=W)
+        fname_entry = Entry(self.edit_wind, width=30)
+        fname_entry.insert(0, record_values[0])
+        fname_entry.grid(row=0, column=1, padx=10, pady=5)
 
-        # Store entry widgets for later retrieval
-        self.edit_entries = {}
+        Label(self.edit_wind, text="Last Name:", font=("inter", 12), bg='#3B3B3B', fg='white').grid(row=1, column=0, padx=10, pady=5, sticky=W)
+        lname_entry = Entry(self.edit_wind, width=30)
+        lname_entry.insert(0, record_values[1])
+        lname_entry.grid(row=1, column=1, padx=10, pady=5)
 
-        for i, (label_text, value) in enumerate(fields):
-            Label(self.edit_wind, text=label_text + ":", font=("inter", 12), bg='#3B3B3B', fg='white',).grid(row=i, column=0, padx=10, pady=5, sticky=W)
-            entry = Entry(self.edit_wind, width=30)
-            entry.insert(0, value)  # Pre-fill with the current value
-            entry.grid(row=i, column=1, padx=10, pady=5)
-            self.edit_entries[label_text] = entry
+        Label(self.edit_wind, text="Gender:", font=("inter", 12), bg='#3B3B3B', fg='white').grid(row=2, column=0, padx=10, pady=5, sticky=W)
+        gender_entry = Entry(self.edit_wind, width=30)
+        gender_entry.insert(0, record_values[2])
+        gender_entry.grid(row=2, column=1, padx=10, pady=5)
+
+        Label(self.edit_wind, text="Class Score:", font=("inter", 12), bg='#3B3B3B', fg='white').grid(row=3, column=0, padx=10, pady=5, sticky=W)
+        class_score_entry = Entry(self.edit_wind, width=30)
+        class_score_entry.insert(0, record_values[3])
+        class_score_entry.grid(row=3, column=1, padx=10, pady=5)
+
+        Label(self.edit_wind, text="Exam Score:", font=("inter", 12), bg='#3B3B3B', fg='white').grid(row=4, column=0, padx=10, pady=5, sticky=W)
+        exam_score_entry = Entry(self.edit_wind, width=30)
+        exam_score_entry.insert(0, record_values[4])
+        exam_score_entry.grid(row=4, column=1, padx=10, pady=5)
 
         # Save Changes Button
         Button(
             self.edit_wind,
             text="Save Changes",
-            command=lambda: self.save_changes(record_id),
+            command=lambda: self.save_changes(
+                record_id,
+                fname_entry.get(),
+                lname_entry.get(),
+                gender_entry.get(),
+                class_score_entry.get(),
+                exam_score_entry.get()
+            ),
             bg="green",
             fg="white",
             font=("inter", 10, "bold")
-        ).grid(row=len(fields), column=1, pady=20, sticky=E)
+        ).grid(row=5, column=1, pady=20, sticky=E)
+
 
 
     #==================================== Save Changes / Update Changes  ======================================================
     @db_error_handler
     @require_role("user")
-    def save_changes(self, record_id):
+    def save_changes(self, record_id, fname, lname, gender, class_score, exam_score):
         """Save the changes made to the record"""
-        # Retrieve updated values from the entry fields
-        updated_values = {field: entry.get() for field, entry in self.edit_entries.items()}
-
         # Validate that all fields are filled
-        if any(not value.strip() for value in updated_values.values()):
-            self.show_message("Warnibg", "All fields are required.", "Warning")
+        if not all([fname, lname, gender, class_score, exam_score]):
+            self.show_message("Warning", "All fields are required.", "warning")
             return
+
+        # Calculate total score and grade
+        total_score = float(class_score) + float(exam_score)
+        
+        # Determine grade
+        if 75 <= total_score <= 100:
+            grade = "A1  Excellent"
+        elif 70 <= total_score <= 74:
+            grade = "B2  Very Good"
+        elif 65 <= total_score <= 69:
+            grade = "B3  Good"
+        elif 60 <= total_score <= 64:
+            grade = "C4  Credit"
+        elif 55 <= total_score <= 59:
+            grade = "C5  Credit"
+        elif 50 <= total_score <= 54:
+            grade = "C6  Credit"
+        elif 45 <= total_score <= 49:
+            grade = "D7  Pass"
+        elif 40 <= total_score <= 44:
+            grade = "E8  Pass"
+        else:
+            grade = "F9  Fail"
 
         # Update the database
         query = """
@@ -977,20 +1009,20 @@ class School_Portal:
             WHERE id=?
         """
         parameters = (
-            updated_values["First Name"],
-            updated_values["Last Name"],
-            updated_values["Gender"],
-            updated_values["Class Score"],
-            updated_values["Exam Score"],
-            updated_values["Total Score"],
-            updated_values["Grade"],
+            fname,
+            lname,
+            gender,
+            float(class_score),
+            float(exam_score),
+            total_score,
+            grade,
             record_id
         )
         self.run_query(query, parameters)
 
         # Close the edit window and refresh the records
         self.edit_wind.destroy()
-        self.show_message("Success",f"Record {record_id} updated successfully.", "success")
+        self.show_message("Success", f"Record {record_id} updated successfully.", "success")
         self.view_records()
 
    #=================================================== Edit, Help, Exit Functions ==================================================
