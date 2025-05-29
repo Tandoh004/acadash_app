@@ -1057,7 +1057,8 @@ class School_Portal:
                     return
 
                 # Build the query dynamically based on the selected field
-                query = f"SELECT * FROM students_records WHERE {search_field} LIKE ?"
+                query = f"SELECT id, fname, lname, gender, classScore, examScore,  totalScore, grade FROM students_records WHERE {search_field} LIKE ?"
+                
                 parameters = [f"%{search_value}%"]
 
                 # Execute the query
@@ -1833,7 +1834,7 @@ class School_Portal:
 
 
         # Query for passed students
-        query_pass = query_total + " AND totalScore >= 50"  # Assuming pass mark is 50
+        query_pass = query_total + " AND totalScore >= 45"  # Assuming pass mark is 50
 
         total_students = self.run_query(query_total, parameters).fetchone()[0]
         passed_students = self.run_query(query_pass, parameters).fetchone()[0]
@@ -1955,7 +1956,7 @@ class School_Portal:
             parameters.append(selected_subject)
 
         # Query for passed students
-        query_pass = query_total + " AND totalScore >= 50"
+        query_pass = query_total + " AND totalScore >= 45"
 
         # Execute queries
         total_students = self.run_query(query_total, parameters).fetchone()[0]
