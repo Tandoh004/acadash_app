@@ -420,28 +420,28 @@ class School_Portal:
 
         # Define the column headers and their widths
         self.tree.heading("#0", text="ID")
-        self.tree.column("#0", width=60)
+        self.tree.column("#0", width=50, minwidth=50)
 
         self.tree.heading("#1", text="First Name")
-        self.tree.column("#1", width=100)
+        self.tree.column("#1", width=100, minwidth=100)
 
         self.tree.heading("#2", text="Last Name")
-        self.tree.column("#2", width=140)
+        self.tree.column("#2", width=140, minwidth=140)
 
         self.tree.heading("#3", text="Gender")
-        self.tree.column("#3", width=70, anchor= CENTER)
+        self.tree.column("#3", width=60, minwidth=60, anchor= CENTER)
 
         self.tree.heading("#4", text="Class Score")
-        self.tree.column("#4", width=100, anchor = CENTER)
+        self.tree.column("#4", width=90, minwidth=90, anchor = CENTER)
 
         self.tree.heading("#5", text="Exam Score")
-        self.tree.column("#5", width=100, anchor = CENTER)
+        self.tree.column("#5", width=90, minwidth=90 ,anchor = CENTER)
 
         self.tree.heading("#6", text="Total Score")
-        self.tree.column("#6", width=100, anchor = CENTER)
+        self.tree.column("#6", width=90, minwidth=90 , anchor = CENTER)
 
         self.tree.heading("#7", text="Grade & Remarks")
-        self.tree.column("#7", width=150)
+        self.tree.column("#7", width=130, minwidth=130)
                 
         self.bind_treeview_copy()
 
@@ -4439,7 +4439,7 @@ class School_Portal:
         """Open a window to retrieve student data based on Class, Subject, Year, and Period."""
         win = Toplevel(self.root)
         win.title("Retrieve Student Records")
-        win.geometry("900x500")
+        win.geometry("1200x500")
         win.configure(bg="#2E2E2E")
         self.center_window(win)
         win.grab_set()
@@ -4486,7 +4486,7 @@ class School_Portal:
         period_cb.set("Choose")
 
         # --- Treeview ---
-        cols = ("ID","Index Number", "First Name", "Last Name", "Total Score", "Grade")
+        cols = ("ID","Index Number", "First Name", "Last Name","Gender", "Class Score" ,"Exam Score", "Total Score", "Grade")
         tree_frame = Frame(win)
         tree_frame.grid(row=2, column=0, columnspan=8, padx=5, pady=10, sticky="nsew")
 
@@ -4517,7 +4517,7 @@ class School_Portal:
                 return
 
             query = """
-                SELECT a.student_id, a.index_num, s.fname, s.lname, s.totalScore, s.grade
+                SELECT a.student_id, a.index_num, s.fname, s.lname,s.gender, s.classScore, s.examScore, s.totalScore, s.grade
                 FROM academic_records a
                 JOIN students_records s ON s.id = a.student_id
                 WHERE s.class_ = ? AND s.subject = ? AND a.year = ? AND a.period = ?
@@ -4538,7 +4538,10 @@ class School_Portal:
 
         # --- Save to PDF ---
         def save_to_pdf():
-            file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF Files", "*.pdf")])
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf", 
+                filetypes=[("PDF Files", "*.pdf")]
+            )
             if not file_path:
                 return
 
@@ -4550,31 +4553,86 @@ class School_Portal:
 
                 c = canvas.Canvas(file_path, pagesize=A4)
                 width, height = A4
+
+                # Title
                 c.setFont("Helvetica-Bold", 14)
                 c.drawString(180, height - 40, "Student Academic Records")
 
                 # Header Info
                 c.setFont("Helvetica", 11)
-                c.drawString(50, height - 60, f"Class: {class_}   Subject: {subject}   Year: {year}   Period: {period}")
+                c.drawString(50, height - 60, 
+                    f"Class: {class_}   Subject: {subject}   Year: {year}   Period: {period}")
+
+                # Define column widths and positions with center alignment flag
+                col_widths = {
+                    "ID": {"width": 30, "align": "left"},
+                    "Index Number": {"width": 70, "align": "left"},
+                    "First Name": {"width": 70, "align": "left"},
+                    "Last Name": {"width": 90, "align": "left"},
+                    "Gender": {"width": 40, "align": "center"},  # Centered
+                    "Class Score": {"width": 60, "align": "center"},  # Centered
+                    "Exam Score": {"width": 60, "align": "center"},  # Centered
+                    "Total Score": {"width": 60, "align": "center"},  # Centered
+                    "Grade": {"width": 80, "align": "left"}
+                }
+
+                # Calculate starting x position for each column
+                x_positions = {}
+                current_x = 30  # Start from left margin
+                for header, config in col_widths.items():
+                    x_positions[header] = current_x
+                    current_x += config["width"]
 
                 # Table Headers
                 c.setFont("Helvetica-Bold", 10)
                 y = height - 90
-                headers = ["ID","Index Number", "First Name", "Last Name", "Total Score", "Grade"]
-                for i, header in enumerate(headers):
-                    c.drawString(50 + i * 100, y, header)
+                headers = ["ID", "Index Number", "First Name", "Last Name", "Gender", 
+                        "Class Score", "Exam Score", "Total Score", "Grade"]
+                
+                for header in headers:
+                    config = col_widths[header]
+                    x = x_positions[header]
+                    
+                    # Center the header text if column is centered
+                    if config["align"] == "center":
+                        header_width = c.stringWidth(header, "Helvetica-Bold", 10)
+                        x = x + (config["width"] - header_width) / 2
+                    
+                    c.drawString(x, y, header)
 
                 # Table Data
                 y -= 20
                 c.setFont("Helvetica", 10)
                 for child in tree.get_children():
                     values = tree.item(child)["values"]
-                    for i, val in enumerate(values):
-                        c.drawString(50 + i * 100, y, str(val))
-                    y -= 20
-                    if y < 50:
+                    if y < 50:  # Check for page break
                         c.showPage()
+                        # Redraw headers on new page
                         y = height - 50
+                        c.setFont("Helvetica-Bold", 10)
+                        for header in headers:
+                            config = col_widths[header]
+                            x = x_positions[header]
+                            if config["align"] == "center":
+                                header_width = c.stringWidth(header, "Helvetica-Bold", 10)
+                                x = x + (config["width"] - header_width) / 2
+                            c.drawString(x, y, header)
+                        y -= 20
+                        c.setFont("Helvetica", 10)
+
+                    for i, val in enumerate(values):
+                        header = headers[i]
+                        config = col_widths[header]
+                        x = x_positions[header]
+                        val_str = str(val)
+                        
+                        # Center the value if column is centered
+                        if config["align"] == "center":
+                            val_width = c.stringWidth(val_str, "Helvetica", 10)
+                            x = x + (config["width"] - val_width) / 2
+                            
+                        c.drawString(x, y, val_str)
+                    y -= 20
 
                 c.save()
                 self.show_message("Success", "PDF saved successfully.", "success")
